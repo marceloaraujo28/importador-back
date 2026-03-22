@@ -1,25 +1,123 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { getAccountConfig } from "../modules/extratos/config/account-config";
+import { parseBancoBrasilExtrato } from "../modules/extratos/parsers/banco-brasil.parser";
+
+function extractAccountIdFromFileName(fileName: string): string | null {
+  const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
+  return match ? match[0] : null;
+}
 
 export async function extratosRoutes(app: FastifyInstance) {
   app.post("/extratos/importar", async (request, reply) => {
-    const files = await request.files();
+    const files = request.files();
 
-    if (!files) {
+    const processedFiles: Array<{
+      fileName: string;
+      accountId: string | null;
+      bankName: string | null;
+      companyName: string | null;
+      parser: string | null;
+      mimetype: string;
+      size: number;
+      transactions?: Array<{
+        accountId: string;
+        bankName: string;
+        companyName: string;
+        date: string;
+        description: string;
+        amount: number;
+        signal: "C" | "D";
+        assignment:
+          | "ENTRADAS"
+          | "SAÍDAS"
+          | "TARIFAS"
+          | "APLICAÇÕES"
+          | "RESGATES"
+          | "IGNORAR"
+          | "OUTROS";
+      }>;
+      error?: string;
+    }> = [];
+
+    for await (const file of files) {
+      const buffer = await file.toBuffer();
+      const accountId = extractAccountIdFromFileName(file.filename);
+
+      const baseResult = {
+        fileName: file.filename,
+        accountId,
+        bankName: null as string | null,
+        companyName: null as string | null,
+        parser: null as string | null,
+        mimetype: file.mimetype,
+        size: buffer.length,
+      };
+
+      if (!accountId) {
+        processedFiles.push({
+          ...baseResult,
+          error:
+            "Não foi possível identificar o ID da conta pelo nome do arquivo.",
+        });
+        continue;
+      }
+
+      const accountConfig = getAccountConfig(accountId);
+
+      if (!accountConfig) {
+        processedFiles.push({
+          ...baseResult,
+          error: `Conta ${accountId} não encontrada no mapeamento.`,
+        });
+        continue;
+      }
+
+      const enrichedBaseResult = {
+        ...baseResult,
+        bankName: accountConfig.bankName,
+        companyName: accountConfig.companyName,
+      };
+
+      try {
+        if (accountConfig.bankName === "BANCO DO BRASIL") {
+          const transactions = parseBancoBrasilExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_DO_BRASIL",
+            transactions,
+          });
+
+          continue;
+        }
+
+        processedFiles.push({
+          ...enrichedBaseResult,
+          error: `Ainda não existe parser implementado para o banco ${accountConfig.bankName}.`,
+        });
+      } catch (error) {
+        processedFiles.push({
+          ...enrichedBaseResult,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Erro desconhecido ao processar o arquivo.",
+        });
+      }
+    }
+
+    if (!processedFiles.length) {
       return reply.status(400).send({ error: "Nenhum arquivo enviado" });
     }
 
-    const result: any[] = [];
-
-    for await (const file of files) {
-      result.push({
-        fileName: file.filename,
-        mimetype: file.mimetype,
-      });
-    }
-
     return reply.send({
-      message: "Arquivos recebidos com sucesso",
-      files: result,
+      message: "Arquivos processados",
+      files: processedFiles,
     });
   });
 }
