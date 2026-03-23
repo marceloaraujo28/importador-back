@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { getAccountConfig } from "../modules/extratos/config/account-config";
 import { parseBancoBrasilExtrato } from "../modules/extratos/parsers/banco-brasil.parser";
+import { confirmExtratosReview } from "../modules/extratos/services/confirm-extratos-review.service";
+import { listExtratos } from "../modules/extratos/services/list-extratos.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -119,5 +121,69 @@ export async function extratosRoutes(app: FastifyInstance) {
       message: "Arquivos processados",
       files: processedFiles,
     });
+  });
+
+  app.post("/extratos/revisao/confirmar", async (request, reply) => {
+    try {
+      const body = request.body as {
+        transactions?: Array<{
+          accountId: string;
+          bankName: string;
+          companyName: string;
+          date: string;
+          description: string;
+          amount: number;
+          signal: "C" | "D";
+          assignment:
+            | "ENTRADAS"
+            | "SAÍDAS"
+            | "TARIFAS"
+            | "APLICAÇÕES"
+            | "RESGATES"
+            | "IGNORAR"
+            | "OUTROS";
+        }>;
+      };
+
+      if (!body.transactions || !Array.isArray(body.transactions)) {
+        return reply.status(400).send({
+          error: "O campo transactions é obrigatório.",
+        });
+      }
+
+      const result = await confirmExtratosReview({
+        transactions: body.transactions,
+      });
+
+      return reply.send({
+        message: "Revisão dos extratos salva com sucesso.",
+        savedCount: result.savedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao salvar revisão dos extratos.",
+      });
+    }
+  });
+
+  app.get("/extratos", async (_request, reply) => {
+    try {
+      const extratos = await listExtratos();
+
+      return reply.send({
+        message: "Extratos carregados com sucesso.",
+        data: extratos,
+      });
+    } catch (error) {
+      return reply.status(500).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao buscar extratos.",
+      });
+    }
   });
 }
