@@ -1,10 +1,30 @@
 import { prisma } from "../src/lib/prisma";
 
+type SeedCompany = {
+  name: string;
+  groupName: string;
+};
+
 type SeedAccount = {
   code: string;
   bankName: string;
   companyName: string;
 };
+
+const companies: SeedCompany[] = [
+  {
+    name: "Vale do Verdão S/A Açúcar e Álcool",
+    groupName: "Grupo Vale do Verdão",
+  },
+  { name: "Usina Panorama S/A", groupName: "Grupo Vale do Verdão" },
+  { name: "Floresta S/A Açúcar e Álcool", groupName: "Grupo Vale do Verdão" },
+  { name: "Agropecuária Primavera LTDA", groupName: "Grupo Vale do Verdão" },
+  { name: "Floresta Agrícola LTDA", groupName: "Grupo Vale do Verdão" },
+  { name: "Energética Entre Rios", groupName: "Grupo Vale do Verdão" },
+
+  { name: "Cambuí Açúcar e Álcool LTDA", groupName: "Grupo Cambuí" },
+  { name: "Energética Cambuí LTDA", groupName: "Grupo Cambuí" },
+];
 
 const accounts: SeedAccount[] = [
   {
@@ -136,17 +156,17 @@ const accounts: SeedAccount[] = [
   {
     code: "PRI1",
     bankName: "BANCO DO BRASIL",
-    companyName: "Agropecuária Primavera",
+    companyName: "Agropecuária Primavera LTDA",
   },
   {
     code: "PRI2",
     bankName: "BANCO ITAÚ",
-    companyName: "Agropecuária Primavera",
+    companyName: "Agropecuária Primavera LTDA",
   },
   {
     code: "PRI3",
     bankName: "BANCO DO BRASIL",
-    companyName: "Agropecuária Primavera",
+    companyName: "Agropecuária Primavera LTDA",
   },
 
   {
@@ -179,26 +199,51 @@ const accounts: SeedAccount[] = [
   {
     code: "EC01",
     bankName: "BANCO DO BRASIL",
-    companyName: "Energética Cambuí",
+    companyName: "Energética Cambuí LTDA",
   },
-  { code: "EC02", bankName: "BANCO ITAÚ", companyName: "Energética Cambuí" },
+  {
+    code: "EC02",
+    bankName: "BANCO ITAÚ",
+    companyName: "Energética Cambuí LTDA",
+  },
   {
     code: "EC03",
     bankName: "BANCO BRADESCO",
-    companyName: "Energética Cambuí",
+    companyName: "Energética Cambuí LTDA",
   },
 ];
 
 async function main() {
-  const uniqueCompanyNames = [
-    ...new Set(accounts.map((account) => account.companyName)),
+  const uniqueGroupNames = [
+    ...new Set(companies.map((company) => company.groupName)),
   ];
 
-  for (const companyName of uniqueCompanyNames) {
-    await prisma.company.upsert({
-      where: { name: companyName },
+  for (const groupName of uniqueGroupNames) {
+    await prisma.companyGroup.upsert({
+      where: { name: groupName },
       update: {},
-      create: { name: companyName },
+      create: { name: groupName },
+    });
+  }
+
+  for (const company of companies) {
+    const group = await prisma.companyGroup.findUnique({
+      where: { name: company.groupName },
+    });
+
+    if (!group) {
+      throw new Error(`Grupo não encontrado no seed: ${company.groupName}`);
+    }
+
+    await prisma.company.upsert({
+      where: { name: company.name },
+      update: {
+        groupId: group.id,
+      },
+      create: {
+        name: company.name,
+        groupId: group.id,
+      },
     });
   }
 
@@ -221,6 +266,21 @@ async function main() {
         code: account.code,
         bankName: account.bankName,
         companyId: company.id,
+      },
+    });
+  }
+
+  const allAccounts = await prisma.account.findMany();
+
+  for (const account of allAccounts) {
+    await prisma.accountOpeningBalance.upsert({
+      where: { accountId: account.id },
+      update: {},
+      create: {
+        accountId: account.id,
+        referenceDate: null,
+        initialAvailable: 0,
+        initialApplication: 0,
       },
     });
   }

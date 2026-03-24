@@ -3,6 +3,9 @@ import { getAccountConfig } from "../modules/extratos/config/account-config";
 import { parseBancoBrasilExtrato } from "../modules/extratos/parsers/banco-brasil.parser";
 import { confirmExtratosReview } from "../modules/extratos/services/confirm-extratos-review.service";
 import { listExtratos } from "../modules/extratos/services/list-extratos.service";
+import { getConsolidadoDashboard } from "../modules/dashboard/services/get-consolidado-dashboard.service";
+import { listOpeningBalances } from "../modules/dashboard/services/list-opening-balances.service";
+import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -183,6 +186,89 @@ export async function extratosRoutes(app: FastifyInstance) {
           error instanceof Error
             ? error.message
             : "Erro desconhecido ao buscar extratos.",
+      });
+    }
+  });
+
+  app.get("/dashboard/consolidado", async (request, reply) => {
+    try {
+      const query = request.query as {
+        dateFrom?: string;
+        dateTo?: string;
+        companyName?: string;
+        groupName?: string;
+      };
+
+      const filters = {
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(query.companyName ? { companyName: query.companyName } : {}),
+        ...(query.groupName ? { groupName: query.groupName } : {}),
+      };
+
+      const result = await getConsolidadoDashboard(filters);
+
+      return reply.send({
+        message: "Dashboard consolidado carregado com sucesso.",
+        data: result,
+      });
+    } catch (error) {
+      return reply.status(500).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao carregar dashboard consolidado.",
+      });
+    }
+  });
+
+  app.get("/accounts/opening-balances", async (_request, reply) => {
+    try {
+      const result = await listOpeningBalances();
+
+      return reply.send({
+        message: "Saldos iniciais carregados com sucesso.",
+        data: result,
+      });
+    } catch (error) {
+      return reply.status(500).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao carregar saldos iniciais.",
+      });
+    }
+  });
+
+  app.put("/accounts/opening-balances/:accountCode", async (request, reply) => {
+    try {
+      const params = request.params as {
+        accountCode: string;
+      };
+
+      const body = request.body as {
+        referenceDate?: string | null;
+        initialAvailable?: number;
+        initialApplication?: number;
+      };
+
+      const result = await updateOpeningBalance({
+        accountCode: params.accountCode,
+        referenceDate: body.referenceDate ?? null,
+        initialAvailable: Number(body.initialAvailable ?? 0),
+        initialApplication: Number(body.initialApplication ?? 0),
+      });
+
+      return reply.send({
+        message: "Saldo inicial atualizado com sucesso.",
+        data: result,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao atualizar saldo inicial.",
       });
     }
   });

@@ -21,25 +21,69 @@ enum TransactionAssignment {
   OUTROS
 }
 
-model Company {
+model CompanyGroup {
   id        String    @id @default(cuid())
   name      String    @unique
-  accounts  Account[]
+  companies Company[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
+model Company {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  groupId   String
+  group     CompanyGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  accounts  Account[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([groupId])
+}
+
 model Account {
-  id           String        @id @default(cuid())
-  code         String        @unique
-  bankName     String
-  companyId    String
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String                @id @default(cuid())
+  code           String                @unique
+  bankName       String
+  companyId      String
+  company        Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  transactions   Transaction[]
+  openingBalance AccountOpeningBalance?
+  dailySummaries AccountDailySummary[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
   @@index([companyId])
+}
+
+model AccountOpeningBalance {
+  id                 String   @id @default(cuid())
+  accountId          String   @unique
+  account            Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  referenceDate      String?
+  initialAvailable   Decimal  @default(0)
+  initialApplication Decimal  @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model AccountDailySummary {
+  id           String   @id @default(cuid())
+  accountId    String
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  dateKey      String
+  entries      Decimal  @default(0)
+  outputs      Decimal  @default(0)
+  fees         Decimal  @default(0)
+  yields       Decimal  @default(0)
+  rescues      Decimal  @default(0)
+  applications Decimal  @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([accountId, dateKey])
+  @@index([accountId])
+  @@index([dateKey])
 }
 
 model Transaction {

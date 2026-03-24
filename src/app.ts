@@ -9,6 +9,8 @@ export function buildApp() {
   });
   app.register(cors, {
     origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
   // plugin para upload de arquivos
   app.register(multipart);
