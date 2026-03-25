@@ -22,6 +22,9 @@ type AccountCalculatedSummary = {
   yields: number;
   rescues: number;
   applications: number;
+  transferEcIn: number;
+  transferEcOut: number;
+  transferEcNet: number;
   available: number;
   application: number;
   sucata: number;
@@ -130,15 +133,27 @@ export async function getConsolidadoDashboard(
         (sum, item) => sum + toNumber(item.applications),
         0,
       );
+      const transferEcIn = account.dailySummaries.reduce(
+        (sum, item) => sum + toNumber(item.transferEcIn),
+        0,
+      );
+      const transferEcOut = account.dailySummaries.reduce(
+        (sum, item) => sum + toNumber(item.transferEcOut),
+        0,
+      );
+
+      const transferEcNet = roundCurrency(transferEcIn - transferEcOut);
 
       const available = roundCurrency(
         initialAvailable +
           entries +
           yields +
-          rescues -
+          rescues +
+          transferEcIn -
           fees -
           outputs -
-          applications,
+          applications -
+          transferEcOut,
       );
 
       const rawApplication = roundCurrency(
@@ -163,6 +178,9 @@ export async function getConsolidadoDashboard(
         yields: roundCurrency(yields),
         rescues: roundCurrency(rescues),
         applications: roundCurrency(applications),
+        transferEcIn: roundCurrency(transferEcIn),
+        transferEcOut: roundCurrency(transferEcOut),
+        transferEcNet,
         available,
         application,
         sucata,

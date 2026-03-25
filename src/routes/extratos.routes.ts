@@ -6,6 +6,7 @@ import { listExtratos } from "../modules/extratos/services/list-extratos.service
 import { getConsolidadoDashboard } from "../modules/dashboard/services/get-consolidado-dashboard.service";
 import { listOpeningBalances } from "../modules/dashboard/services/list-opening-balances.service";
 import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
+import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -101,6 +102,23 @@ export async function extratosRoutes(app: FastifyInstance) {
           continue;
         }
 
+        if (accountConfig.bankName === "BANCO ITAÚ") {
+          const transactions = parseItauExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_ITAU",
+            transactions,
+          });
+
+          continue;
+        }
+
         processedFiles.push({
           ...enrichedBaseResult,
           error: `Ainda não existe parser implementado para o banco ${accountConfig.bankName}.`,
@@ -143,6 +161,7 @@ export async function extratosRoutes(app: FastifyInstance) {
             | "TARIFAS"
             | "APLICAÇÕES"
             | "RESGATES"
+            | "TRANSFERÊNCIA EC"
             | "IGNORAR"
             | "OUTROS";
         }>;

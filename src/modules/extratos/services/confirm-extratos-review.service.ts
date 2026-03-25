@@ -19,6 +19,7 @@ type ReviewTransactionInput = {
     | "TARIFAS"
     | "APLICAÇÕES"
     | "RESGATES"
+    | "TRANSFERÊNCIA EC"
     | "IGNORAR"
     | "OUTROS";
 };
@@ -41,6 +42,8 @@ function mapAssignmentToPrismaEnum(
       return TransactionAssignment.APLICACOES;
     case "RESGATES":
       return TransactionAssignment.RESGATES;
+    case "TRANSFERÊNCIA EC":
+      return TransactionAssignment.TRANSFERENCIA_EC;
     case "OUTROS":
       return TransactionAssignment.OUTROS;
     case "IGNORAR":
@@ -57,6 +60,7 @@ function mapSignalToPrismaEnum(signal: "C" | "D"): TransactionSignal {
 async function incrementDailySummary(params: {
   accountId: string;
   date: string;
+  signal: "C" | "D";
   assignment: ReviewTransactionInput["assignment"];
   amount: number;
 }) {
@@ -69,6 +73,8 @@ async function incrementDailySummary(params: {
     yields?: { increment: number };
     rescues?: { increment: number };
     applications?: { increment: number };
+    transferEcIn?: { increment: number };
+    transferEcOut?: { increment: number };
   } = {};
 
   switch (params.assignment) {
@@ -86,6 +92,13 @@ async function incrementDailySummary(params: {
       break;
     case "RESGATES":
       updateData.rescues = { increment: params.amount };
+      break;
+    case "TRANSFERÊNCIA EC":
+      if (params.signal === "C") {
+        updateData.transferEcIn = { increment: params.amount };
+      } else {
+        updateData.transferEcOut = { increment: params.amount };
+      }
       break;
     default:
       break;
@@ -108,6 +121,8 @@ async function incrementDailySummary(params: {
       yields: updateData.yields?.increment ?? 0,
       rescues: updateData.rescues?.increment ?? 0,
       applications: updateData.applications?.increment ?? 0,
+      transferEcIn: updateData.transferEcIn?.increment ?? 0,
+      transferEcOut: updateData.transferEcOut?.increment ?? 0,
     },
   });
 }
@@ -148,6 +163,7 @@ export async function confirmExtratosReview(input: ConfirmExtratosReviewInput) {
     await incrementDailySummary({
       accountId: account.id,
       date: transaction.date,
+      signal: transaction.signal,
       assignment: transaction.assignment,
       amount: transaction.amount,
     });

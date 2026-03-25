@@ -18,6 +18,7 @@ enum TransactionAssignment {
   TARIFAS
   APLICACOES
   RESGATES
+  TRANSFERENCIA_EC
   OUTROS
 }
 
@@ -68,18 +69,20 @@ model AccountOpeningBalance {
 }
 
 model AccountDailySummary {
-  id           String   @id @default(cuid())
-  accountId    String
-  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  dateKey      String
-  entries      Decimal  @default(0)
-  outputs      Decimal  @default(0)
-  fees         Decimal  @default(0)
-  yields       Decimal  @default(0)
-  rescues      Decimal  @default(0)
-  applications Decimal  @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  accountId      String
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  dateKey        String
+  entries        Decimal  @default(0)
+  outputs        Decimal  @default(0)
+  fees           Decimal  @default(0)
+  yields         Decimal  @default(0)
+  rescues        Decimal  @default(0)
+  applications   Decimal  @default(0)
+  transferEcIn   Decimal  @default(0)
+  transferEcOut  Decimal  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([accountId, dateKey])
   @@index([accountId])

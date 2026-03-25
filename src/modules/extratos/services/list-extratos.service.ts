@@ -2,7 +2,14 @@ import { prisma } from "../../../lib/prisma";
 
 function mapAssignmentFromPrisma(
   assignment: string,
-): "ENTRADAS" | "SAÍDAS" | "TARIFAS" | "APLICAÇÕES" | "RESGATES" | "OUTROS" {
+):
+  | "ENTRADAS"
+  | "SAÍDAS"
+  | "TARIFAS"
+  | "APLICAÇÕES"
+  | "RESGATES"
+  | "TRANSFERÊNCIA EC"
+  | "OUTROS" {
   switch (assignment) {
     case "ENTRADAS":
       return "ENTRADAS";
@@ -14,6 +21,8 @@ function mapAssignmentFromPrisma(
       return "APLICAÇÕES";
     case "RESGATES":
       return "RESGATES";
+    case "TRANSFERENCIA_EC":
+      return "TRANSFERÊNCIA EC";
     default:
       return "OUTROS";
   }
@@ -25,7 +34,7 @@ function mapSignalFromPrisma(signal: string): "C" | "D" {
 
 export async function listExtratos() {
   const transactions = await prisma.transaction.findMany({
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }],
     include: {
       account: {
         include: {
