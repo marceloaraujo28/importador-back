@@ -4,6 +4,7 @@ import {
 } from "../../../generated/prisma/client";
 import { prisma } from "../../../lib/prisma";
 import { parsePtBrDateToDateKey } from "../../dashboard/utils/dashboard-date";
+import { applyDailySummaryImpact } from "./daily-summary-impact.service";
 
 type ReviewTransactionInput = {
   accountId: string;
@@ -57,76 +58,6 @@ function mapSignalToPrismaEnum(signal: "C" | "D"): TransactionSignal {
   return signal === "C" ? TransactionSignal.C : TransactionSignal.D;
 }
 
-async function incrementDailySummary(params: {
-  accountId: string;
-  date: string;
-  signal: "C" | "D";
-  assignment: ReviewTransactionInput["assignment"];
-  amount: number;
-}) {
-  const dateKey = parsePtBrDateToDateKey(params.date);
-
-  const updateData: {
-    entries?: { increment: number };
-    outputs?: { increment: number };
-    fees?: { increment: number };
-    yields?: { increment: number };
-    rescues?: { increment: number };
-    applications?: { increment: number };
-    transferEcIn?: { increment: number };
-    transferEcOut?: { increment: number };
-  } = {};
-
-  switch (params.assignment) {
-    case "ENTRADAS":
-      updateData.entries = { increment: params.amount };
-      break;
-    case "SAÍDAS":
-      updateData.outputs = { increment: params.amount };
-      break;
-    case "TARIFAS":
-      updateData.fees = { increment: params.amount };
-      break;
-    case "APLICAÇÕES":
-      updateData.applications = { increment: params.amount };
-      break;
-    case "RESGATES":
-      updateData.rescues = { increment: params.amount };
-      break;
-    case "TRANSFERÊNCIA EC":
-      if (params.signal === "C") {
-        updateData.transferEcIn = { increment: params.amount };
-      } else {
-        updateData.transferEcOut = { increment: params.amount };
-      }
-      break;
-    default:
-      break;
-  }
-
-  await prisma.accountDailySummary.upsert({
-    where: {
-      accountId_dateKey: {
-        accountId: params.accountId,
-        dateKey,
-      },
-    },
-    update: updateData,
-    create: {
-      accountId: params.accountId,
-      dateKey,
-      entries: updateData.entries?.increment ?? 0,
-      outputs: updateData.outputs?.increment ?? 0,
-      fees: updateData.fees?.increment ?? 0,
-      yields: updateData.yields?.increment ?? 0,
-      rescues: updateData.rescues?.increment ?? 0,
-      applications: updateData.applications?.increment ?? 0,
-      transferEcIn: updateData.transferEcIn?.increment ?? 0,
-      transferEcOut: updateData.transferEcOut?.increment ?? 0,
-    },
-  });
-}
-
 export async function confirmExtratosReview(input: ConfirmExtratosReviewInput) {
   const transactions = input.transactions ?? [];
 
@@ -153,6 +84,7 @@ export async function confirmExtratosReview(input: ConfirmExtratosReviewInput) {
       data: {
         accountId: account.id,
         date: transaction.date,
+        dateKey: parsePtBrDateToDateKey(transaction.date),
         description: transaction.description,
         amount: transaction.amount,
         signal: mapSignalToPrismaEnum(transaction.signal),
@@ -160,12 +92,13 @@ export async function confirmExtratosReview(input: ConfirmExtratosReviewInput) {
       },
     });
 
-    await incrementDailySummary({
+    await applyDailySummaryImpact({
       accountId: account.id,
       date: transaction.date,
       signal: transaction.signal,
       assignment: transaction.assignment,
       amount: transaction.amount,
+      direction: 1,
     });
 
     savedCount += 1;

@@ -7,6 +7,7 @@ import { getConsolidadoDashboard } from "../modules/dashboard/services/get-conso
 import { listOpeningBalances } from "../modules/dashboard/services/list-opening-balances.service";
 import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
+import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -191,13 +192,37 @@ export async function extratosRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get("/extratos", async (_request, reply) => {
+  app.get("/extratos", async (request, reply) => {
     try {
-      const extratos = await listExtratos();
+      const query = request.query as {
+        page?: string;
+        pageSize?: string;
+        assignment?:
+          | "ENTRADAS"
+          | "SAÍDAS"
+          | "TARIFAS"
+          | "APLICAÇÕES"
+          | "RESGATES"
+          | "TRANSFERÊNCIA EC"
+          | "OUTROS";
+        dateFrom?: string;
+        dateTo?: string;
+        dateOrder?: "asc" | "desc";
+      };
+
+      const result = await listExtratos({
+        page: Number(query.page ?? 1),
+        pageSize: Number(query.pageSize ?? 20),
+        ...(query.assignment ? { assignment: query.assignment } : {}),
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
+      });
 
       return reply.send({
         message: "Extratos carregados com sucesso.",
-        data: extratos,
+        data: result.data,
+        meta: result.meta,
       });
     } catch (error) {
       return reply.status(500).send({
@@ -205,6 +230,46 @@ export async function extratosRoutes(app: FastifyInstance) {
           error instanceof Error
             ? error.message
             : "Erro desconhecido ao buscar extratos.",
+      });
+    }
+  });
+
+  app.put("/extratos", async (request, reply) => {
+    try {
+      const body = request.body as {
+        updates?: Array<{
+          id: string;
+          assignment:
+            | "ENTRADAS"
+            | "SAÍDAS"
+            | "TARIFAS"
+            | "APLICAÇÕES"
+            | "RESGATES"
+            | "TRANSFERÊNCIA EC"
+            | "OUTROS";
+        }>;
+      };
+
+      if (!body.updates || !Array.isArray(body.updates)) {
+        return reply.status(400).send({
+          error: "O campo updates é obrigatório.",
+        });
+      }
+
+      const result = await updateExtratos({
+        updates: body.updates,
+      });
+
+      return reply.send({
+        message: "Extratos atualizados com sucesso.",
+        updatedCount: result.updatedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao atualizar extratos.",
       });
     }
   });
