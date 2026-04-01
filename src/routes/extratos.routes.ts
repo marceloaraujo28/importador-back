@@ -8,6 +8,7 @@ import { listOpeningBalances } from "../modules/dashboard/services/list-opening-
 import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
 import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
+import { exportExtratos } from "../modules/extratos/services/export-extratos.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -143,6 +144,49 @@ export async function extratosRoutes(app: FastifyInstance) {
       message: "Arquivos processados",
       files: processedFiles,
     });
+  });
+
+  app.get("/extratos/exportar", async (request, reply) => {
+    try {
+      const query = request.query as {
+        assignment?:
+          | "ENTRADAS"
+          | "SAÍDAS"
+          | "TARIFAS"
+          | "APLICAÇÕES"
+          | "RESGATES"
+          | "TRANSFERÊNCIA EC"
+          | "OUTROS";
+        dateFrom?: string;
+        dateTo?: string;
+        dateOrder?: "asc" | "desc";
+      };
+
+      const buffer = await exportExtratos({
+        ...(query.assignment ? { assignment: query.assignment } : {}),
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
+      });
+
+      const fileName = "extratos.xlsx";
+
+      reply
+        .header(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        .header("Content-Disposition", `attachment; filename="${fileName}"`);
+
+      return reply.send(buffer);
+    } catch (error) {
+      return reply.status(500).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao exportar extratos.",
+      });
+    }
   });
 
   app.post("/extratos/revisao/confirmar", async (request, reply) => {
