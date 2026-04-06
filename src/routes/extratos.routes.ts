@@ -305,6 +305,7 @@ export async function extratosRoutes(app: FastifyInstance) {
       const body = request.body as {
         updates?: Array<{
           id: string;
+          amount?: number;
           assignment:
             | "ENTRADAS"
             | "SAÍDAS"
