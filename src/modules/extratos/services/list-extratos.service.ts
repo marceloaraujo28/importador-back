@@ -12,12 +12,16 @@ type ListExtratosInput = {
     | "SAÍDAS"
     | "TARIFAS"
     | "APLICAÇÕES"
+    | "RENDIMENTOS"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "OUTROS";
   dateFrom?: string;
   dateTo?: string;
   dateOrder: "asc" | "desc";
+  amount?: number;
+  accountIds?: string[];
+  bankNames?: string[];
 };
 
 function mapAssignmentFromPrisma(
@@ -27,6 +31,7 @@ function mapAssignmentFromPrisma(
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS" {
@@ -39,6 +44,8 @@ function mapAssignmentFromPrisma(
       return "TARIFAS";
     case "APLICACOES":
       return "APLICAÇÕES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERENCIA_EC":
@@ -60,6 +67,8 @@ function mapAssignmentToPrisma(
       return "TARIFAS";
     case "APLICAÇÕES":
       return "APLICACOES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERÊNCIA EC":
@@ -84,11 +93,24 @@ export async function listExtratos(input: ListExtratosInput) {
 
   const where: Prisma.TransactionWhereInput = {
     ...(mappedAssignment ? { assignment: mappedAssignment } : {}),
+    ...(input.amount !== undefined ? { amount: input.amount } : {}),
     ...(input.dateFrom || input.dateTo
       ? {
           dateKey: {
             ...(input.dateFrom ? { gte: input.dateFrom } : {}),
             ...(input.dateTo ? { lte: input.dateTo } : {}),
+          },
+        }
+      : {}),
+    ...(input.accountIds?.length || input.bankNames?.length
+      ? {
+          account: {
+            ...(input.accountIds?.length
+              ? { code: { in: input.accountIds } }
+              : {}),
+            ...(input.bankNames?.length
+              ? { bankName: { in: input.bankNames } }
+              : {}),
           },
         }
       : {}),

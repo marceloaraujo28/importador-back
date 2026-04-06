@@ -40,6 +40,7 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
           | "RESGATES"
           | "IGNORAR"
           | "OUTROS";
@@ -154,6 +155,7 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
@@ -204,6 +206,7 @@ export async function extratosRoutes(app: FastifyInstance) {
             | "ENTRADAS"
             | "SAÍDAS"
             | "TARIFAS"
+            | "RENDIMENTOS"
             | "APLICAÇÕES"
             | "RESGATES"
             | "TRANSFERÊNCIA EC"
@@ -246,20 +249,39 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
         dateFrom?: string;
         dateTo?: string;
         dateOrder?: "asc" | "desc";
+        amount?: string;
+        accountId?: string | string[];
+        bankName?: string | string[];
       };
+
+      const accountIds = Array.isArray(query.accountId)
+        ? query.accountId
+        : query.accountId
+          ? [query.accountId]
+          : [];
+
+      const bankNames = Array.isArray(query.bankName)
+        ? query.bankName
+        : query.bankName
+          ? [query.bankName]
+          : [];
 
       const result = await listExtratos({
         page: Number(query.page ?? 1),
         pageSize: Number(query.pageSize ?? 20),
         ...(query.assignment ? { assignment: query.assignment } : {}),
+        ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
         ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
         ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(accountIds.length ? { accountIds } : {}),
+        ...(bankNames.length ? { bankNames } : {}),
         dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
       });
 
@@ -288,6 +310,7 @@ export async function extratosRoutes(app: FastifyInstance) {
             | "SAÍDAS"
             | "TARIFAS"
             | "APLICAÇÕES"
+            | "RENDIMENTOS"
             | "RESGATES"
             | "TRANSFERÊNCIA EC"
             | "OUTROS";

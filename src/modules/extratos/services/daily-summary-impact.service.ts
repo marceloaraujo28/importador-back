@@ -9,6 +9,7 @@ type AssignmentLabel =
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "IGNORAR"
@@ -55,6 +56,9 @@ export async function applyDailySummaryImpact(
       break;
     case "APLICAÇÕES":
       updateData.applications = { increment: value };
+      break;
+    case "RENDIMENTOS":
+      updateData.yields = { increment: value };
       break;
     case "RESGATES":
       updateData.rescues = { increment: value };

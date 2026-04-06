@@ -41,6 +41,7 @@ export function classifyBbTransaction(
   input: ClassifyBbTransactionInput,
 ): BbAssignment {
   const firstWord = getFirstWord(input.description);
+
   const signal = normalizeSignal(input.signal);
 
   if (!firstWord || !signal) {

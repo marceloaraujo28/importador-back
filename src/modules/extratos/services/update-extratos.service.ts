@@ -7,6 +7,7 @@ type AssignmentLabel =
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS";
@@ -32,6 +33,8 @@ function mapAssignmentToPrismaEnum(
       return "TARIFAS";
     case "APLICAÇÕES":
       return "APLICACOES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERÊNCIA EC":
@@ -48,6 +51,7 @@ function mapAssignmentFromPrisma(
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS" {
@@ -60,6 +64,8 @@ function mapAssignmentFromPrisma(
       return "TARIFAS";
     case "APLICACOES":
       return "APLICAÇÕES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERENCIA_EC":

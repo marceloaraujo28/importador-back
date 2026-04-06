@@ -5,6 +5,7 @@ export type BbAssignment =
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "IGNORAR"
   | "OUTROS";
@@ -31,7 +32,7 @@ export const bbAssignmentRules: BbAssignmentRule[] = [
   { keyword: "OPERACOES", assignment: "ENTRADAS", signal: "C" },
   { keyword: "PAGAMENTO", assignment: "SAÍDAS", signal: "D" },
   { keyword: "PAGTO", assignment: "SAÍDAS", signal: "D" },
-
+  { keyword: "EMPRESTIMO", assignment: "SAÍDAS", signal: "D" },
   // PIX (duas regras)
   { keyword: "PIX", assignment: "ENTRADAS", signal: "C" },
   { keyword: "PIX", assignment: "SAÍDAS", signal: "D" },
@@ -41,7 +42,7 @@ export const bbAssignmentRules: BbAssignmentRule[] = [
   { keyword: "RSG", assignment: "RESGATES", signal: "C" },
   { keyword: "SALDO", assignment: "IGNORAR", signal: "C" },
   { keyword: "TAR", assignment: "TARIFAS", signal: "D" },
-
+  { keyword: "TARIFA", assignment: "TARIFAS", signal: "D" },
   // TED (todas variações)
   { keyword: "TED", assignment: "ENTRADAS", signal: "C" },
   { keyword: "TED", assignment: "SAÍDAS", signal: "D" },

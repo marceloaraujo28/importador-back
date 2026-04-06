@@ -19,6 +19,7 @@ type ReviewTransactionInput = {
     | "SAÍDAS"
     | "TARIFAS"
     | "APLICAÇÕES"
+    | "RENDIMENTOS"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "IGNORAR"
@@ -41,6 +42,8 @@ function mapAssignmentToPrismaEnum(
       return TransactionAssignment.TARIFAS;
     case "APLICAÇÕES":
       return TransactionAssignment.APLICACOES;
+    case "RENDIMENTOS":
+      return TransactionAssignment.RENDIMENTOS;
     case "RESGATES":
       return TransactionAssignment.RESGATES;
     case "TRANSFERÊNCIA EC":
