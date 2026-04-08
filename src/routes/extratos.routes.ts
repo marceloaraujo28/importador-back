@@ -9,6 +9,10 @@ import { updateOpeningBalance } from "../modules/dashboard/services/update-openi
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
 import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
 import { exportExtratos } from "../modules/extratos/services/export-extratos.service";
+import {
+  saveExtratos,
+  type SaveExtratosInput,
+} from "../modules/extratos/services/save-extratos.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -34,6 +38,7 @@ export async function extratosRoutes(app: FastifyInstance) {
         date: string;
         description: string;
         amount: number;
+        ignoreDailySummary?: boolean;
         signal: "C" | "D";
         assignment:
           | "ENTRADAS"
@@ -99,7 +104,10 @@ export async function extratosRoutes(app: FastifyInstance) {
           processedFiles.push({
             ...enrichedBaseResult,
             parser: "BANCO_DO_BRASIL",
-            transactions,
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
           });
 
           continue;
@@ -116,7 +124,10 @@ export async function extratosRoutes(app: FastifyInstance) {
           processedFiles.push({
             ...enrichedBaseResult,
             parser: "BANCO_ITAU",
-            transactions,
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
           });
 
           continue;
@@ -193,27 +204,7 @@ export async function extratosRoutes(app: FastifyInstance) {
 
   app.post("/extratos/revisao/confirmar", async (request, reply) => {
     try {
-      const body = request.body as {
-        transactions?: Array<{
-          accountId: string;
-          bankName: string;
-          companyName: string;
-          date: string;
-          description: string;
-          amount: number;
-          signal: "C" | "D";
-          assignment:
-            | "ENTRADAS"
-            | "SAÍDAS"
-            | "TARIFAS"
-            | "RENDIMENTOS"
-            | "APLICAÇÕES"
-            | "RESGATES"
-            | "TRANSFERÊNCIA EC"
-            | "IGNORAR"
-            | "OUTROS";
-        }>;
-      };
+      const body = request.body as SaveExtratosInput;
 
       if (!body.transactions || !Array.isArray(body.transactions)) {
         return reply.status(400).send({
@@ -222,7 +213,7 @@ export async function extratosRoutes(app: FastifyInstance) {
       }
 
       const result = await confirmExtratosReview({
-        transactions: body.transactions,
+        transactions: body.transactions as SaveExtratosInput["transactions"],
       });
 
       return reply.send({
@@ -235,6 +226,55 @@ export async function extratosRoutes(app: FastifyInstance) {
           error instanceof Error
             ? error.message
             : "Erro desconhecido ao salvar revisão dos extratos.",
+      });
+    }
+  });
+
+  app.post("/extratos", async (request, reply) => {
+    try {
+      const body = request.body as {
+        transactions?: Array<{
+          accountId: string;
+          bankName: string;
+          companyName: string;
+          date: string;
+          description: string;
+          amount: number;
+          ignoreDailySummary?: boolean;
+          signal: "C" | "D";
+          assignment:
+            | "ENTRADAS"
+            | "SAÃDAS"
+            | "TARIFAS"
+            | "RENDIMENTOS"
+            | "APLICAÃ‡Ã•ES"
+            | "RESGATES"
+            | "TRANSFERÃŠNCIA EC"
+            | "IGNORAR"
+            | "OUTROS";
+        }>;
+      };
+
+      if (!body.transactions || !Array.isArray(body.transactions)) {
+        return reply.status(400).send({
+          error: "O campo transactions é obrigatório.",
+        });
+      }
+
+      const result = await saveExtratos({
+        transactions: body.transactions as SaveExtratosInput["transactions"],
+      });
+
+      return reply.send({
+        message: "Extratos salvos com sucesso.",
+        savedCount: result.savedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao salvar extratos.",
       });
     }
   });
@@ -306,6 +346,7 @@ export async function extratosRoutes(app: FastifyInstance) {
         updates?: Array<{
           id: string;
           amount?: number;
+          ignoreDailySummary?: boolean;
           assignment:
             | "ENTRADAS"
             | "SAÍDAS"

@@ -146,6 +146,7 @@ export async function listExtratos(input: ListExtratosInput) {
       amount: Number(transaction.amount),
       signal: mapSignalFromPrisma(transaction.signal),
       assignment: mapAssignmentFromPrisma(transaction.assignment),
+      ignoreDailySummary: transaction.ignoreDailySummary,
       createdAt: transaction.createdAt.toISOString(),
     })),
     meta: {

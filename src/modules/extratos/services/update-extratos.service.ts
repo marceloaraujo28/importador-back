@@ -16,6 +16,7 @@ type UpdateExtratoInput = {
   id: string;
   assignment: AssignmentLabel;
   amount?: number;
+  ignoreDailySummary?: boolean;
 };
 
 type UpdateExtratosInput = {
@@ -103,6 +104,9 @@ export async function updateExtratos(input: UpdateExtratosInput) {
       const newAssignment = item.assignment;
       const oldAmount = Number(transaction.amount);
       const newAmount = item.amount ?? oldAmount;
+      const oldIgnoreDailySummary = transaction.ignoreDailySummary;
+      const newIgnoreDailySummary =
+        item.ignoreDailySummary ?? oldIgnoreDailySummary;
 
       if (!Number.isFinite(newAmount) || newAmount < 0) {
         throw new Error(`Valor inválido para o extrato ${item.id}.`);
@@ -110,38 +114,49 @@ export async function updateExtratos(input: UpdateExtratosInput) {
 
       const hasAssignmentChanged = oldAssignment !== newAssignment;
       const hasAmountChanged = oldAmount !== newAmount;
+      const hasIgnoreDailySummaryChanged =
+        oldIgnoreDailySummary !== newIgnoreDailySummary;
 
-      if (!hasAssignmentChanged && !hasAmountChanged) {
+      if (
+        !hasAssignmentChanged &&
+        !hasAmountChanged &&
+        !hasIgnoreDailySummaryChanged
+      ) {
         continue;
       }
 
-      await applyDailySummaryImpact({
-        client: tx,
-        accountId: transaction.accountId,
-        date: transaction.date,
-        signal: mapSignalFromPrisma(transaction.signal),
-        assignment: oldAssignment,
-        amount: oldAmount,
-        direction: -1,
-      });
+      if (!oldIgnoreDailySummary) {
+        await applyDailySummaryImpact({
+          client: tx,
+          accountId: transaction.accountId,
+          date: transaction.date,
+          signal: mapSignalFromPrisma(transaction.signal),
+          assignment: oldAssignment,
+          amount: oldAmount,
+          direction: -1,
+        });
+      }
 
       await tx.transaction.update({
         where: { id: transaction.id },
         data: {
           assignment: mapAssignmentToPrismaEnum(newAssignment),
           amount: newAmount,
+          ignoreDailySummary: newIgnoreDailySummary,
         },
       });
 
-      await applyDailySummaryImpact({
-        client: tx,
-        accountId: transaction.accountId,
-        date: transaction.date,
-        signal: mapSignalFromPrisma(transaction.signal),
-        assignment: newAssignment,
-        amount: newAmount,
-        direction: 1,
-      });
+      if (!newIgnoreDailySummary) {
+        await applyDailySummaryImpact({
+          client: tx,
+          accountId: transaction.accountId,
+          date: transaction.date,
+          signal: mapSignalFromPrisma(transaction.signal),
+          assignment: newAssignment,
+          amount: newAmount,
+          direction: 1,
+        });
+      }
 
       count += 1;
     }
