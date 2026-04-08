@@ -4,7 +4,8 @@ export type SupportedBankName =
   | "CAIXA ECONÔMICA FEDERAL"
   | "BANCO SAFRA"
   | "BANCO SANTANDER"
-  | "BANCO BRADESCO";
+  | "BANCO BRADESCO"
+  | "BANCO BRADESCO TRIANON";
 
 export type AccountConfig = {
   accountId: string;
@@ -186,7 +187,7 @@ export const accountConfigMap: Record<string, AccountConfig> = {
   },
   EE03: {
     accountId: "EE03",
-    bankName: "BANCO BRADESCO",
+    bankName: "BANCO BRADESCO TRIANON",
     companyName: "Energética Entre Rios",
   },
 
@@ -202,7 +203,7 @@ export const accountConfigMap: Record<string, AccountConfig> = {
   },
   EC03: {
     accountId: "EC03",
-    bankName: "BANCO BRADESCO",
+    bankName: "BANCO BRADESCO TRIANON",
     companyName: "Energética Cambuí",
   },
 };

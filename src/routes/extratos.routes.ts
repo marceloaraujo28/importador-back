@@ -9,6 +9,7 @@ import { updateOpeningBalance } from "../modules/dashboard/services/update-openi
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
 import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
 import { exportExtratos } from "../modules/extratos/services/export-extratos.service";
+import { deleteExtrato } from "../modules/extratos/services/delete-extrato.service";
 import {
   saveExtratos,
   type SaveExtratosInput,
@@ -379,6 +380,28 @@ export async function extratosRoutes(app: FastifyInstance) {
           error instanceof Error
             ? error.message
             : "Erro desconhecido ao atualizar extratos.",
+      });
+    }
+  });
+
+  app.delete("/extratos/:id", async (request, reply) => {
+    try {
+      const params = request.params as {
+        id: string;
+      };
+
+      const result = await deleteExtrato(params.id);
+
+      return reply.send({
+        message: "Extrato excluído com sucesso.",
+        deletedCount: result.deletedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao excluir extrato.",
       });
     }
   });
