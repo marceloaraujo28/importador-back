@@ -168,6 +168,7 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "TARIFAS"
           | "APLICAÇÕES"
           | "RENDIMENTOS"
+          | "RENDIMENTO MENSAL"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
@@ -245,12 +246,13 @@ export async function extratosRoutes(app: FastifyInstance) {
           signal: "C" | "D";
           assignment:
             | "ENTRADAS"
-            | "SAÃDAS"
+            | "SAÍDAS"
             | "TARIFAS"
             | "RENDIMENTOS"
-            | "APLICAÃ‡Ã•ES"
+            | "RENDIMENTO MENSAL"
+            | "APLICAÇÕES"
             | "RESGATES"
-            | "TRANSFERÃŠNCIA EC"
+            | "TRANSFERÊNCIA EC"
             | "IGNORAR"
             | "OUTROS";
         }>;
@@ -291,6 +293,7 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "TARIFAS"
           | "APLICAÇÕES"
           | "RENDIMENTOS"
+          | "RENDIMENTO MENSAL"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
@@ -354,6 +357,7 @@ export async function extratosRoutes(app: FastifyInstance) {
             | "TARIFAS"
             | "APLICAÇÕES"
             | "RENDIMENTOS"
+            | "RENDIMENTO MENSAL"
             | "RESGATES"
             | "TRANSFERÊNCIA EC"
             | "OUTROS";

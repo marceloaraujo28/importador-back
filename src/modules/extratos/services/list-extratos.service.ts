@@ -13,6 +13,7 @@ type ListExtratosInput = {
     | "TARIFAS"
     | "APLICAÇÕES"
     | "RENDIMENTOS"
+    | "RENDIMENTO MENSAL"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "OUTROS";
@@ -32,6 +33,7 @@ function mapAssignmentFromPrisma(
   | "TARIFAS"
   | "APLICAÇÕES"
   | "RENDIMENTOS"
+  | "RENDIMENTO MENSAL"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS" {
@@ -46,6 +48,8 @@ function mapAssignmentFromPrisma(
       return "APLICAÇÕES";
     case "RENDIMENTOS":
       return "RENDIMENTOS";
+    case "RENDIMENTO_MENSAL":
+      return "RENDIMENTO MENSAL";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERENCIA_EC":
@@ -69,6 +73,8 @@ function mapAssignmentToPrisma(
       return "APLICACOES";
     case "RENDIMENTOS":
       return "RENDIMENTOS";
+    case "RENDIMENTO MENSAL":
+      return "RENDIMENTO_MENSAL";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERÊNCIA EC":

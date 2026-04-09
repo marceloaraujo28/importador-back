@@ -18,6 +18,7 @@ enum TransactionAssignment {
   TARIFAS
   APLICACOES
   RENDIMENTOS
+  RENDIMENTO_MENSAL
   RESGATES
   TRANSFERENCIA_EC
   OUTROS
@@ -78,6 +79,7 @@ model AccountDailySummary {
   outputs        Decimal  @default(0)
   fees           Decimal  @default(0)
   yields         Decimal  @default(0)
+  monthlyYields  Decimal  @default(0)
   rescues        Decimal  @default(0)
   applications   Decimal  @default(0)
   transferEcIn   Decimal  @default(0)

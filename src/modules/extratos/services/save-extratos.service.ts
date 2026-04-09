@@ -20,6 +20,7 @@ export type SaveExtratoInput = {
     | "TARIFAS"
     | "APLICAÇÕES"
     | "RENDIMENTOS"
+    | "RENDIMENTO MENSAL"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "IGNORAR"
@@ -47,6 +48,8 @@ function mapAssignmentToPrismaEnum(
       return TransactionAssignment.RENDIMENTOS;
     case "RESGATES":
       return TransactionAssignment.RESGATES;
+    case "RENDIMENTO MENSAL":
+      return TransactionAssignment.RENDIMENTO_MENSAL;
     case "TRANSFERÊNCIA EC":
       return TransactionAssignment.TRANSFERENCIA_EC;
     case "OUTROS":

@@ -7,6 +7,7 @@ type AssignmentLabel =
   | "TARIFAS"
   | "APLICAÇÕES"
   | "RENDIMENTOS"
+  | "RENDIMENTO MENSAL"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS";
@@ -25,6 +26,8 @@ function mapAssignmentFromPrisma(
       return "APLICAÇÕES";
     case "RENDIMENTOS":
       return "RENDIMENTOS";
+    case "RENDIMENTO_MENSAL":
+      return "RENDIMENTO MENSAL";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERENCIA_EC":
