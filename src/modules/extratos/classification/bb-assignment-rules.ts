@@ -5,6 +5,7 @@ export type BbAssignment =
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
   | "RESGATES"
   | "IGNORAR"
   | "OUTROS";
@@ -18,20 +19,24 @@ export type BbAssignmentRule = {
 export const bbAssignmentRules: BbAssignmentRule[] = [
   { keyword: "APLIC", assignment: "APLICAÇÕES", signal: "D" },
   { keyword: "BB", assignment: "APLICAÇÕES", signal: "D" },
+  { keyword: "BB", assignment: "RESGATES", signal: "C" },
   { keyword: "BB-ESCRITURACAO", assignment: "SAÍDAS", signal: "D" },
+  { keyword: "BLOQ", assignment: "SAÍDAS", signal: "D" },
   { keyword: "CHEQUE", assignment: "SAÍDAS", signal: "D" },
   { keyword: "COBRANCA", assignment: "ENTRADAS", signal: "C" },
   { keyword: "DEBITO", assignment: "TARIFAS", signal: "D" },
   { keyword: "DEP", assignment: "ENTRADAS", signal: "C" },
   { keyword: "DEPOSITO", assignment: "ENTRADAS", signal: "C" },
   { keyword: "DESBLOQUEIO", assignment: "ENTRADAS", signal: "C" },
-  { keyword: "ESTORNO", assignment: "ENTRADAS", signal: "D" },
+  { keyword: "DEVOLUC", assignment: "OUTROS", signal: "D" },
+  { keyword: "DEVOLUCAO", assignment: "OUTROS", signal: "D" },
+  { keyword: "ESTORNO", assignment: "OUTROS", signal: "D" },
   { keyword: "FOLHA", assignment: "SAÍDAS", signal: "D" },
   { keyword: "IMPOSTOS", assignment: "SAÍDAS", signal: "D" },
   { keyword: "OPERACOES", assignment: "ENTRADAS", signal: "C" },
   { keyword: "PAGAMENTO", assignment: "SAÍDAS", signal: "D" },
   { keyword: "PAGTO", assignment: "SAÍDAS", signal: "D" },
-
+  { keyword: "EMPRESTIMO", assignment: "SAÍDAS", signal: "D" },
   // PIX (duas regras)
   { keyword: "PIX", assignment: "ENTRADAS", signal: "C" },
   { keyword: "PIX", assignment: "SAÍDAS", signal: "D" },
@@ -39,9 +44,10 @@ export const bbAssignmentRules: BbAssignmentRule[] = [
   { keyword: "RECEBIMENTO", assignment: "ENTRADAS", signal: "C" },
   { keyword: "RECEBIMENTOS", assignment: "ENTRADAS", signal: "C" },
   { keyword: "RSG", assignment: "RESGATES", signal: "C" },
-  { keyword: "SALDO", assignment: "IGNORAR", signal: "C" },
+  { keyword: "S", assignment: "IGNORAR", signal: "*" },
+  { keyword: "SALDO", assignment: "IGNORAR", signal: "*" },
   { keyword: "TAR", assignment: "TARIFAS", signal: "D" },
-
+  { keyword: "TARIFA", assignment: "TARIFAS", signal: "D" },
   // TED (todas variações)
   { keyword: "TED", assignment: "ENTRADAS", signal: "C" },
   { keyword: "TED", assignment: "SAÍDAS", signal: "D" },

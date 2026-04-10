@@ -20,6 +20,7 @@ type AccountCalculatedSummary = {
   outputs: number;
   fees: number;
   yields: number;
+  monthlyYields: number;
   rescues: number;
   applications: number;
   transferEcIn: number;
@@ -125,6 +126,10 @@ export async function getConsolidadoDashboard(
         (sum, item) => sum + toNumber(item.yields),
         0,
       );
+      const monthlyYields = account.dailySummaries.reduce(
+        (sum, item) => sum + toNumber(item.monthlyYields),
+        0,
+      );
       const rescues = account.dailySummaries.reduce(
         (sum, item) => sum + toNumber(item.rescues),
         0,
@@ -157,7 +162,7 @@ export async function getConsolidadoDashboard(
       );
 
       const rawApplication = roundCurrency(
-        initialApplication + applications - rescues,
+        initialApplication + applications + monthlyYields - rescues,
       );
 
       const sucata = isSucataAccount(account.code) ? rawApplication : 0;
@@ -176,6 +181,7 @@ export async function getConsolidadoDashboard(
         outputs: roundCurrency(outputs),
         fees: roundCurrency(fees),
         yields: roundCurrency(yields),
+        monthlyYields: roundCurrency(monthlyYields),
         rescues: roundCurrency(rescues),
         applications: roundCurrency(applications),
         transferEcIn: roundCurrency(transferEcIn),

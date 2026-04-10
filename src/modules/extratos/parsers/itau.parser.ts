@@ -81,14 +81,6 @@ function findHeaderRowIndex(rows: SheetRow[]): number {
 
     const isHeader = hasDate && hasLancamento && hasValor;
 
-    if (isHeader) {
-      console.log("[ITAU] HEADER_FOUND", {
-        index,
-        row,
-        normalizedCells,
-      });
-    }
-
     return isHeader;
   });
 }
@@ -155,21 +147,12 @@ function recomputeWorksheetRange(worksheet: XLSX.WorkSheet): string {
 export function parseItauExtrato(
   input: ParseItauExtratoInput,
 ): ItauParsedTransaction[] {
-  console.log("[ITAU] START_PARSE", {
-    accountId: input.accountId,
-    bankName: input.bankName,
-    companyName: input.companyName,
-    bufferSize: input.buffer.length,
-  });
-
   const workbook = XLSX.read(input.buffer, {
     type: "buffer",
     cellText: true,
     cellNF: true,
     cellDates: false,
   });
-
-  console.log("[ITAU] SHEET_NAMES", workbook.SheetNames);
 
   const firstSheetName = workbook.SheetNames[0];
 
@@ -183,19 +166,12 @@ export function parseItauExtrato(
     throw new Error("Planilha não encontrada no arquivo.");
   }
 
-  console.log("[ITAU] ORIGINAL_WORKSHEET_REF", worksheet["!ref"]);
-
   const worksheetKeys = Object.keys(worksheet).filter(
     (key) => !key.startsWith("!"),
   );
-  console.log("[ITAU] WORKSHEET_KEYS_COUNT", worksheetKeys.length);
-  console.log("[ITAU] WORKSHEET_KEYS_SAMPLE_START", worksheetKeys.slice(0, 20));
-  console.log("[ITAU] WORKSHEET_KEYS_SAMPLE_END", worksheetKeys.slice(-20));
 
   const recomputedRange = recomputeWorksheetRange(worksheet);
   worksheet["!ref"] = recomputedRange;
-
-  console.log("[ITAU] RECOMPUTED_WORKSHEET_REF", worksheet["!ref"]);
 
   const rows = XLSX.utils.sheet_to_json<SheetRow>(worksheet, {
     header: 1,
@@ -204,13 +180,7 @@ export function parseItauExtrato(
     blankrows: true,
   });
 
-  console.log("[ITAU] ROWS_LENGTH", rows.length);
-  console.log("[ITAU] ROWS_PREVIEW_START", rows.slice(0, 15));
-  console.log("[ITAU] ROWS_PREVIEW_END", rows.slice(-15));
-
   const headerRowIndex = findHeaderRowIndex(rows);
-
-  console.log("[ITAU] HEADER_ROW_INDEX", headerRowIndex);
 
   if (headerRowIndex === -1) {
     throw new Error("Cabeçalho do extrato do Banco Itaú não encontrado.");
@@ -218,15 +188,11 @@ export function parseItauExtrato(
 
   const headerRow = rows[headerRowIndex];
 
-  console.log("[ITAU] HEADER_ROW_RAW", headerRow);
-
   if (!headerRow) {
     throw new Error("Linha de cabeçalho não encontrada no extrato.");
   }
 
   const columnIndexes = getColumnIndexes(headerRow);
-
-  console.log("[ITAU] COLUMN_INDEXES", columnIndexes);
 
   if (!hasRequiredColumns(columnIndexes)) {
     throw new Error(
@@ -239,14 +205,7 @@ export function parseItauExtrato(
   for (let index = headerRowIndex + 1; index < rows.length; index++) {
     const row = rows[index];
 
-    console.log("[ITAU] RAW_ROW", {
-      index,
-      row,
-      rowLength: row?.length ?? 0,
-    });
-
     if (!row) {
-      console.log("[ITAU] SKIP_NO_ROW", { index });
       continue;
     }
 
@@ -257,51 +216,17 @@ export function parseItauExtrato(
     const rawAmount = row[columnIndexes.amountIndex];
     const parsedAmount = parseMoney(rawAmount);
 
-    console.log("[ITAU] ROW_READ", {
-      index,
-      date,
-      description,
-      rawAmount,
-      parsedAmount,
-      dateIndex: columnIndexes.dateIndex,
-      descriptionIndex: columnIndexes.descriptionIndex,
-      amountIndex: columnIndexes.amountIndex,
-    });
-
     if (!date || !description || parsedAmount === null) {
-      console.log("[ITAU] SKIP_INVALID_ROW", {
-        index,
-        reason: "date/description/parsedAmount inválido",
-        date,
-        description,
-        rawAmount,
-        parsedAmount,
-      });
       continue;
     }
 
     if (shouldIgnoreRow(description)) {
-      console.log("[ITAU] SKIP_IGNORED_ROW", {
-        index,
-        reason: "descrição ignorada",
-        description,
-      });
       continue;
     }
 
     const signal = getSignalFromAmount(parsedAmount);
 
-    console.log("[ITAU] SIGNAL_RESULT", {
-      index,
-      parsedAmount,
-      signal,
-    });
-
     if (!signal) {
-      console.log("[ITAU] SKIP_NO_SIGNAL", {
-        index,
-        parsedAmount,
-      });
       continue;
     }
 
@@ -312,20 +237,7 @@ export function parseItauExtrato(
       signal,
     });
 
-    console.log("[ITAU] CLASSIFICATION_RESULT", {
-      index,
-      description,
-      signal,
-      assignment,
-      amount,
-    });
-
     if (assignment === "IGNORAR") {
-      console.log("[ITAU] SKIP_ASSIGNMENT_IGNORAR", {
-        index,
-        description,
-        signal,
-      });
       continue;
     }
 
@@ -340,16 +252,8 @@ export function parseItauExtrato(
       assignment,
     };
 
-    console.log("[ITAU] PUSH_TRANSACTION", {
-      index,
-      transaction,
-    });
-
     transactions.push(transaction);
   }
-
-  console.log("[ITAU] TOTAL_TRANSACTIONS", transactions.length);
-  console.log("[ITAU] FINAL_TRANSACTIONS", transactions);
 
   return transactions;
 }

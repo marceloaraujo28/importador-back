@@ -9,6 +9,8 @@ type AssignmentLabel =
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
+  | "RENDIMENTO MENSAL"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "IGNORAR"
@@ -35,6 +37,7 @@ export async function applyDailySummaryImpact(
     outputs?: { increment: number };
     fees?: { increment: number };
     yields?: { increment: number };
+    monthlyYields?: { increment: number };
     rescues?: { increment: number };
     applications?: { increment: number };
     transferEcIn?: { increment: number };
@@ -55,6 +58,12 @@ export async function applyDailySummaryImpact(
       break;
     case "APLICAÇÕES":
       updateData.applications = { increment: value };
+      break;
+    case "RENDIMENTOS":
+      updateData.yields = { increment: value };
+      break;
+    case "RENDIMENTO MENSAL":
+      updateData.monthlyYields = { increment: value };
       break;
     case "RESGATES":
       updateData.rescues = { increment: value };
@@ -85,6 +94,7 @@ export async function applyDailySummaryImpact(
       outputs: updateData.outputs?.increment ?? 0,
       fees: updateData.fees?.increment ?? 0,
       yields: updateData.yields?.increment ?? 0,
+      monthlyYields: updateData.monthlyYields?.increment ?? 0,
       rescues: updateData.rescues?.increment ?? 0,
       applications: updateData.applications?.increment ?? 0,
       transferEcIn: updateData.transferEcIn?.increment ?? 0,

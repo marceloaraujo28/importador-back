@@ -1,14 +1,24 @@
 import type { FastifyInstance } from "fastify";
 import { getAccountConfig } from "../modules/extratos/config/account-config";
 import { parseBancoBrasilExtrato } from "../modules/extratos/parsers/banco-brasil.parser";
+import { parseBradescoExtrato } from "../modules/extratos/parsers/bradesco.parser";
+import { parseBradescoTrianonExtrato } from "../modules/extratos/parsers/bradesco-trianon.parser";
+import { parseCaixaExtrato } from "../modules/extratos/parsers/caixa.parser";
 import { confirmExtratosReview } from "../modules/extratos/services/confirm-extratos-review.service";
 import { listExtratos } from "../modules/extratos/services/list-extratos.service";
 import { getConsolidadoDashboard } from "../modules/dashboard/services/get-consolidado-dashboard.service";
 import { listOpeningBalances } from "../modules/dashboard/services/list-opening-balances.service";
 import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
+import { parseSafraExtrato } from "../modules/extratos/parsers/safra.parser";
+import { parseSantanderExtrato } from "../modules/extratos/parsers/santander.parser";
 import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
 import { exportExtratos } from "../modules/extratos/services/export-extratos.service";
+import { deleteExtrato } from "../modules/extratos/services/delete-extrato.service";
+import {
+  saveExtratos,
+  type SaveExtratosInput,
+} from "../modules/extratos/services/save-extratos.service";
 
 function extractAccountIdFromFileName(fileName: string): string | null {
   const match = fileName.toUpperCase().match(/\b[A-Z]{2,3}\d{1,2}\b/);
@@ -34,12 +44,14 @@ export async function extratosRoutes(app: FastifyInstance) {
         date: string;
         description: string;
         amount: number;
+        ignoreDailySummary?: boolean;
         signal: "C" | "D";
         assignment:
           | "ENTRADAS"
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
           | "RESGATES"
           | "IGNORAR"
           | "OUTROS";
@@ -98,7 +110,30 @@ export async function extratosRoutes(app: FastifyInstance) {
           processedFiles.push({
             ...enrichedBaseResult,
             parser: "BANCO_DO_BRASIL",
-            transactions,
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "CAIXA ECONÔMICA FEDERAL") {
+          const transactions = parseCaixaExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "CAIXA_ECONOMICA_FEDERAL",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
           });
 
           continue;
@@ -115,7 +150,90 @@ export async function extratosRoutes(app: FastifyInstance) {
           processedFiles.push({
             ...enrichedBaseResult,
             parser: "BANCO_ITAU",
-            transactions,
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO SAFRA") {
+          const transactions = parseSafraExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_SAFRA",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO SANTANDER") {
+          const transactions = parseSantanderExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_SANTANDER",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO BRADESCO") {
+          const transactions = parseBradescoExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_BRADESCO",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO BRADESCO TRIANON") {
+          const transactions = parseBradescoTrianonExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_BRADESCO_TRIANON",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
           });
 
           continue;
@@ -154,6 +272,8 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
+          | "RENDIMENTO MENSAL"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
@@ -191,26 +311,7 @@ export async function extratosRoutes(app: FastifyInstance) {
 
   app.post("/extratos/revisao/confirmar", async (request, reply) => {
     try {
-      const body = request.body as {
-        transactions?: Array<{
-          accountId: string;
-          bankName: string;
-          companyName: string;
-          date: string;
-          description: string;
-          amount: number;
-          signal: "C" | "D";
-          assignment:
-            | "ENTRADAS"
-            | "SAÍDAS"
-            | "TARIFAS"
-            | "APLICAÇÕES"
-            | "RESGATES"
-            | "TRANSFERÊNCIA EC"
-            | "IGNORAR"
-            | "OUTROS";
-        }>;
-      };
+      const body = request.body as SaveExtratosInput;
 
       if (!body.transactions || !Array.isArray(body.transactions)) {
         return reply.status(400).send({
@@ -219,7 +320,7 @@ export async function extratosRoutes(app: FastifyInstance) {
       }
 
       const result = await confirmExtratosReview({
-        transactions: body.transactions,
+        transactions: body.transactions as SaveExtratosInput["transactions"],
       });
 
       return reply.send({
@@ -236,6 +337,56 @@ export async function extratosRoutes(app: FastifyInstance) {
     }
   });
 
+  app.post("/extratos", async (request, reply) => {
+    try {
+      const body = request.body as {
+        transactions?: Array<{
+          accountId: string;
+          bankName: string;
+          companyName: string;
+          date: string;
+          description: string;
+          amount: number;
+          ignoreDailySummary?: boolean;
+          signal: "C" | "D";
+          assignment:
+            | "ENTRADAS"
+            | "SAÍDAS"
+            | "TARIFAS"
+            | "RENDIMENTOS"
+            | "RENDIMENTO MENSAL"
+            | "APLICAÇÕES"
+            | "RESGATES"
+            | "TRANSFERÊNCIA EC"
+            | "IGNORAR"
+            | "OUTROS";
+        }>;
+      };
+
+      if (!body.transactions || !Array.isArray(body.transactions)) {
+        return reply.status(400).send({
+          error: "O campo transactions é obrigatório.",
+        });
+      }
+
+      const result = await saveExtratos({
+        transactions: body.transactions as SaveExtratosInput["transactions"],
+      });
+
+      return reply.send({
+        message: "Extratos salvos com sucesso.",
+        savedCount: result.savedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao salvar extratos.",
+      });
+    }
+  });
+
   app.get("/extratos", async (request, reply) => {
     try {
       const query = request.query as {
@@ -246,20 +397,40 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "SAÍDAS"
           | "TARIFAS"
           | "APLICAÇÕES"
+          | "RENDIMENTOS"
+          | "RENDIMENTO MENSAL"
           | "RESGATES"
           | "TRANSFERÊNCIA EC"
           | "OUTROS";
         dateFrom?: string;
         dateTo?: string;
         dateOrder?: "asc" | "desc";
+        amount?: string;
+        accountId?: string | string[];
+        bankName?: string | string[];
       };
+
+      const accountIds = Array.isArray(query.accountId)
+        ? query.accountId
+        : query.accountId
+          ? [query.accountId]
+          : [];
+
+      const bankNames = Array.isArray(query.bankName)
+        ? query.bankName
+        : query.bankName
+          ? [query.bankName]
+          : [];
 
       const result = await listExtratos({
         page: Number(query.page ?? 1),
         pageSize: Number(query.pageSize ?? 20),
         ...(query.assignment ? { assignment: query.assignment } : {}),
+        ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
         ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
         ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(accountIds.length ? { accountIds } : {}),
+        ...(bankNames.length ? { bankNames } : {}),
         dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
       });
 
@@ -283,11 +454,15 @@ export async function extratosRoutes(app: FastifyInstance) {
       const body = request.body as {
         updates?: Array<{
           id: string;
+          amount?: number;
+          ignoreDailySummary?: boolean;
           assignment:
             | "ENTRADAS"
             | "SAÍDAS"
             | "TARIFAS"
             | "APLICAÇÕES"
+            | "RENDIMENTOS"
+            | "RENDIMENTO MENSAL"
             | "RESGATES"
             | "TRANSFERÊNCIA EC"
             | "OUTROS";
@@ -314,6 +489,28 @@ export async function extratosRoutes(app: FastifyInstance) {
           error instanceof Error
             ? error.message
             : "Erro desconhecido ao atualizar extratos.",
+      });
+    }
+  });
+
+  app.delete("/extratos/:id", async (request, reply) => {
+    try {
+      const params = request.params as {
+        id: string;
+      };
+
+      const result = await deleteExtrato(params.id);
+
+      return reply.send({
+        message: "Extrato excluído com sucesso.",
+        deletedCount: result.deletedCount,
+      });
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao excluir extrato.",
       });
     }
   });

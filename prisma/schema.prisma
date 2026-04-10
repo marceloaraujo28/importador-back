@@ -17,6 +17,8 @@ enum TransactionAssignment {
   SAIDAS
   TARIFAS
   APLICACOES
+  RENDIMENTOS
+  RENDIMENTO_MENSAL
   RESGATES
   TRANSFERENCIA_EC
   OUTROS
@@ -77,6 +79,7 @@ model AccountDailySummary {
   outputs        Decimal  @default(0)
   fees           Decimal  @default(0)
   yields         Decimal  @default(0)
+  monthlyYields  Decimal  @default(0)
   rescues        Decimal  @default(0)
   applications   Decimal  @default(0)
   transferEcIn   Decimal  @default(0)
@@ -90,17 +93,18 @@ model AccountDailySummary {
 }
 
 model Transaction {
-  id          String                @id @default(cuid())
-  accountId   String
-  account     Account               @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  date        String
-  dateKey     String
-  description String
-  amount      Decimal
-  signal      TransactionSignal
-  assignment  TransactionAssignment
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  id                 String                @id @default(cuid())
+  accountId          String
+  account            Account               @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  date               String
+  dateKey            String
+  description        String
+  amount             Decimal
+  signal             TransactionSignal
+  assignment         TransactionAssignment
+  ignoreDailySummary Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   @@index([accountId])
   @@index([date])

@@ -192,10 +192,9 @@ const accounts: SeedAccount[] = [
   },
   {
     code: "EE03",
-    bankName: "BANCO BRADESCO",
+    bankName: "BANCO BRADESCO TRIANON",
     companyName: "Energética Entre Rios",
   },
-
   {
     code: "EC01",
     bankName: "BANCO DO BRASIL",
@@ -208,7 +207,7 @@ const accounts: SeedAccount[] = [
   },
   {
     code: "EC03",
-    bankName: "BANCO BRADESCO",
+    bankName: "BANCO BRADESCO TRIANON",
     companyName: "Energética Cambuí LTDA",
   },
 ];

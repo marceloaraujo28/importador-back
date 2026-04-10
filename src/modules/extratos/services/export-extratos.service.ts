@@ -9,6 +9,8 @@ type ExportExtratosInput = {
     | "SAÍDAS"
     | "TARIFAS"
     | "APLICAÇÕES"
+    | "RENDIMENTOS"
+    | "RENDIMENTO MENSAL"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "OUTROS";
@@ -28,6 +30,8 @@ type ExportRow = {
     | "SAÍDAS"
     | "TARIFAS"
     | "APLICAÇÕES"
+    | "RENDIMENTOS"
+    | "RENDIMENTO MENSAL"
     | "RESGATES"
     | "TRANSFERÊNCIA EC"
     | "OUTROS";
@@ -40,6 +44,8 @@ function mapAssignmentFromPrisma(
   | "SAÍDAS"
   | "TARIFAS"
   | "APLICAÇÕES"
+  | "RENDIMENTOS"
+  | "RENDIMENTO MENSAL"
   | "RESGATES"
   | "TRANSFERÊNCIA EC"
   | "OUTROS" {
@@ -52,6 +58,10 @@ function mapAssignmentFromPrisma(
       return "TARIFAS";
     case "APLICACOES":
       return "APLICAÇÕES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
+    case "RENDIMENTO_MENSAL":
+      return "RENDIMENTO MENSAL";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERENCIA_EC":
@@ -73,6 +83,10 @@ function mapAssignmentToPrisma(
       return "TARIFAS";
     case "APLICAÇÕES":
       return "APLICACOES";
+    case "RENDIMENTOS":
+      return "RENDIMENTOS";
+    case "RENDIMENTO MENSAL":
+      return "RENDIMENTO_MENSAL";
     case "RESGATES":
       return "RESGATES";
     case "TRANSFERÊNCIA EC":
@@ -96,6 +110,8 @@ function isPositiveAssignment(assignment: ExportRow["Atribuição"]) {
   return (
     assignment === "ENTRADAS" ||
     assignment === "RESGATES" ||
+    assignment === "RENDIMENTOS" ||
+    assignment === "RENDIMENTO MENSAL" ||
     assignment === "TRANSFERÊNCIA EC"
   );
 }

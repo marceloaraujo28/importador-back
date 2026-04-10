@@ -1,10 +1,10 @@
 import {
-  bbAssignmentRules,
-  type BbAssignment,
-  type BbSignal,
-} from "./bb-assignment-rules";
+  safraAssignmentRules,
+  type SafraAssignment,
+  type SafraSignal,
+} from "./safra-assignment-rules";
 
-type ClassifyBbTransactionInput = {
+type ClassifySafraTransactionInput = {
   description: string;
   signal: string;
 };
@@ -13,6 +13,7 @@ function normalizeText(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
 }
@@ -28,7 +29,7 @@ function getFirstWord(description: string): string {
   return firstWord;
 }
 
-function normalizeSignal(signal: string): BbSignal | null {
+function normalizeSignal(signal: string): SafraSignal | null {
   const normalizedSignal = normalizeText(signal);
 
   if (normalizedSignal === "C") return "C";
@@ -37,18 +38,17 @@ function normalizeSignal(signal: string): BbSignal | null {
   return null;
 }
 
-export function classifyBbTransaction(
-  input: ClassifyBbTransactionInput,
-): BbAssignment {
+export function classifySafraTransaction(
+  input: ClassifySafraTransactionInput,
+): SafraAssignment {
   const firstWord = getFirstWord(input.description);
-
   const signal = normalizeSignal(input.signal);
 
   if (!firstWord || !signal) {
     return "OUTROS";
   }
 
-  const exactRule = bbAssignmentRules.find((rule) => {
+  const exactRule = safraAssignmentRules.find((rule) => {
     return rule.keyword === firstWord && rule.signal === signal;
   });
 
@@ -56,7 +56,7 @@ export function classifyBbTransaction(
     return exactRule.assignment;
   }
 
-  const wildcardRule = bbAssignmentRules.find((rule) => {
+  const wildcardRule = safraAssignmentRules.find((rule) => {
     return rule.keyword === firstWord && rule.signal === "*";
   });
 
