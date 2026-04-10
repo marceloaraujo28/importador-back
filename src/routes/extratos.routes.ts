@@ -1,12 +1,17 @@
 import type { FastifyInstance } from "fastify";
 import { getAccountConfig } from "../modules/extratos/config/account-config";
 import { parseBancoBrasilExtrato } from "../modules/extratos/parsers/banco-brasil.parser";
+import { parseBradescoExtrato } from "../modules/extratos/parsers/bradesco.parser";
+import { parseBradescoTrianonExtrato } from "../modules/extratos/parsers/bradesco-trianon.parser";
+import { parseCaixaExtrato } from "../modules/extratos/parsers/caixa.parser";
 import { confirmExtratosReview } from "../modules/extratos/services/confirm-extratos-review.service";
 import { listExtratos } from "../modules/extratos/services/list-extratos.service";
 import { getConsolidadoDashboard } from "../modules/dashboard/services/get-consolidado-dashboard.service";
 import { listOpeningBalances } from "../modules/dashboard/services/list-opening-balances.service";
 import { updateOpeningBalance } from "../modules/dashboard/services/update-opening-balance.service";
 import { parseItauExtrato } from "../modules/extratos/parsers/itau.parser";
+import { parseSafraExtrato } from "../modules/extratos/parsers/safra.parser";
+import { parseSantanderExtrato } from "../modules/extratos/parsers/santander.parser";
 import { updateExtratos } from "../modules/extratos/services/update-extratos.service";
 import { exportExtratos } from "../modules/extratos/services/export-extratos.service";
 import { deleteExtrato } from "../modules/extratos/services/delete-extrato.service";
@@ -114,6 +119,26 @@ export async function extratosRoutes(app: FastifyInstance) {
           continue;
         }
 
+        if (accountConfig.bankName === "CAIXA ECONÔMICA FEDERAL") {
+          const transactions = parseCaixaExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "CAIXA_ECONOMICA_FEDERAL",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
         if (accountConfig.bankName === "BANCO ITAÚ") {
           const transactions = parseItauExtrato({
             accountId: accountConfig.accountId,
@@ -125,6 +150,86 @@ export async function extratosRoutes(app: FastifyInstance) {
           processedFiles.push({
             ...enrichedBaseResult,
             parser: "BANCO_ITAU",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO SAFRA") {
+          const transactions = parseSafraExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_SAFRA",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO SANTANDER") {
+          const transactions = parseSantanderExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_SANTANDER",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO BRADESCO") {
+          const transactions = parseBradescoExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_BRADESCO",
+            transactions: transactions.map((transaction) => ({
+              ...transaction,
+              ignoreDailySummary: false,
+            })),
+          });
+
+          continue;
+        }
+
+        if (accountConfig.bankName === "BANCO BRADESCO TRIANON") {
+          const transactions = parseBradescoTrianonExtrato({
+            accountId: accountConfig.accountId,
+            bankName: accountConfig.bankName,
+            companyName: accountConfig.companyName,
+            buffer,
+          });
+
+          processedFiles.push({
+            ...enrichedBaseResult,
+            parser: "BANCO_BRADESCO_TRIANON",
             transactions: transactions.map((transaction) => ({
               ...transaction,
               ignoreDailySummary: false,
