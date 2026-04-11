@@ -24,6 +24,24 @@ enum TransactionAssignment {
   OUTROS
 }
 
+enum ManualConsolidadoAssignment {
+  ENTRADAS
+  SAIDAS
+  RESGATES
+  APLICACOES
+  TRANSFERENCIA_EC
+}
+
+enum ManualConsolidadoStatus {
+  AUTORIZADO
+  NAO_AUTORIZADO
+}
+
+enum ManualConsolidadoTransferDirection {
+  ENTRADA
+  SAIDA
+}
+
 model CompanyGroup {
   id        String    @id @default(cuid())
   name      String    @unique
@@ -51,6 +69,7 @@ model Account {
   companyId      String
   company        Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   transactions   Transaction[]
+  manualConsolidadoEntries ManualConsolidadoEntry[]
   openingBalance AccountOpeningBalance?
   dailySummaries AccountDailySummary[]
   createdAt      DateTime              @default(now())
@@ -110,4 +129,25 @@ model Transaction {
   @@index([date])
   @@index([dateKey])
   @@index([assignment])
+}
+
+model ManualConsolidadoEntry {
+  id                String                           @id @default(cuid())
+  accountId         String
+  account           Account                          @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  date              String
+  dateKey           String
+  description       String
+  amount            Decimal
+  assignment        ManualConsolidadoAssignment
+  transferDirection ManualConsolidadoTransferDirection?
+  status            ManualConsolidadoStatus          @default(NAO_AUTORIZADO)
+  createdAt         DateTime                         @default(now())
+  updatedAt         DateTime                         @updatedAt
+
+  @@index([accountId])
+  @@index([date])
+  @@index([dateKey])
+  @@index([assignment])
+  @@index([status])
 }
