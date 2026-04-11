@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import cors from "@fastify/cors";
 import { extratosRoutes } from "./routes/extratos.routes";
+import { manualConsolidadoRoutes } from "./routes/manual-consolidado.routes";
 
 export function buildApp() {
   const app = Fastify({
@@ -16,6 +17,7 @@ export function buildApp() {
   app.register(multipart);
   // registrar rota de extratos
   app.register(extratosRoutes);
+  app.register(manualConsolidadoRoutes);
 
   return app;
 }
