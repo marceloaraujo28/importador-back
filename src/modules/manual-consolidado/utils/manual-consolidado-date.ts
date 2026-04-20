@@ -29,7 +29,13 @@ export function normalizeManualConsolidadoDate(
   const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (isoMatch) {
-    const [, year, month, day] = isoMatch;
+    const year = isoMatch[1];
+    const month = isoMatch[2];
+    const day = isoMatch[3];
+
+    if (!year || !month || !day) {
+      throw new Error(`Data invalida recebida: ${input}`);
+    }
 
     return {
       date: `${day}/${month}/${year}`,
@@ -40,7 +46,14 @@ export function normalizeManualConsolidadoDate(
   const ptBrMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
 
   if (ptBrMatch) {
-    const [, dayText, monthText, yearText] = ptBrMatch;
+    const dayText = ptBrMatch[1];
+    const monthText = ptBrMatch[2];
+    const yearText = ptBrMatch[3];
+
+    if (!dayText || !monthText || !yearText) {
+      throw new Error(`Data invalida recebida: ${input}`);
+    }
+
     const day = String(Number(dayText)).padStart(2, "0");
     const month = String(Number(monthText)).padStart(2, "0");
     const year = normalizeYear(yearText);

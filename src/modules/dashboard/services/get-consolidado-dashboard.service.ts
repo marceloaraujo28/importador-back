@@ -53,6 +53,48 @@ function roundCurrency(value: number) {
   return Number(value.toFixed(2));
 }
 
+function applyAvailableImpact(
+  initialAvailable: number,
+  summaries: Array<{
+    entries: unknown;
+    outputs: unknown;
+    fees: unknown;
+    yields: unknown;
+    rescues: unknown;
+    applications: unknown;
+    transferEcIn: unknown;
+    transferEcOut: unknown;
+  }>,
+) {
+  return roundCurrency(
+    initialAvailable +
+      summaries.reduce((sum, item) => sum + toNumber(item.entries), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.yields), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.rescues), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.transferEcIn), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.fees), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.outputs), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.applications), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.transferEcOut), 0),
+  );
+}
+
+function applyApplicationImpact(
+  initialApplication: number,
+  summaries: Array<{
+    monthlyYields: unknown;
+    rescues: unknown;
+    applications: unknown;
+  }>,
+) {
+  return roundCurrency(
+    initialApplication +
+      summaries.reduce((sum, item) => sum + toNumber(item.applications), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.monthlyYields), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.rescues), 0),
+  );
+}
+
 export async function getConsolidadoDashboard(
   filters: GetConsolidadoDashboardInput = {},
 ) {
@@ -83,66 +125,115 @@ export async function getConsolidadoDashboard(
         },
       },
       openingBalance: true,
-      dailySummaries: {
-        where: {
-          ...(filters.dateFrom ? { dateKey: { gte: filters.dateFrom } } : {}),
-          ...(filters.dateTo
-            ? {
-                ...(filters.dateFrom
-                  ? { dateKey: { gte: filters.dateFrom, lte: filters.dateTo } }
-                  : { dateKey: { lte: filters.dateTo } }),
-              }
-            : {}),
-        },
-      },
     },
     orderBy: {
       code: "asc",
     },
   });
 
+  const accountIds = accounts.map((account) => account.id);
+
+  const [previousDailySummaries, periodDailySummaries] = await Promise.all([
+    filters.dateFrom
+      ? prisma.accountDailySummary.findMany({
+          where: {
+            accountId: { in: accountIds },
+            dateKey: { lt: filters.dateFrom },
+          },
+        })
+      : Promise.resolve([]),
+    prisma.accountDailySummary.findMany({
+      where: {
+        accountId: { in: accountIds },
+        ...(filters.dateFrom || filters.dateTo
+          ? {
+              dateKey: {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+              },
+            }
+          : {}),
+      },
+    }),
+  ]);
+
+  const previousDailySummariesByAccount = new Map<
+    string,
+    typeof previousDailySummaries
+  >();
+  const periodDailySummariesByAccount = new Map<
+    string,
+    typeof periodDailySummaries
+  >();
+
+  for (const summary of previousDailySummaries) {
+    const summaries =
+      previousDailySummariesByAccount.get(summary.accountId) ?? [];
+    summaries.push(summary);
+    previousDailySummariesByAccount.set(summary.accountId, summaries);
+  }
+
+  for (const summary of periodDailySummaries) {
+    const summaries = periodDailySummariesByAccount.get(summary.accountId) ?? [];
+    summaries.push(summary);
+    periodDailySummariesByAccount.set(summary.accountId, summaries);
+  }
+
   const accountSummaries: AccountCalculatedSummary[] = accounts.map(
     (account) => {
-      const initialAvailable = toNumber(
+      const baseInitialAvailable = toNumber(
         account.openingBalance?.initialAvailable ?? 0,
       );
-      const initialApplication = toNumber(
+      const baseInitialApplication = toNumber(
         account.openingBalance?.initialApplication ?? 0,
       );
+      const previousSummaries =
+        previousDailySummariesByAccount.get(account.id) ?? [];
+      const currentPeriodSummaries =
+        periodDailySummariesByAccount.get(account.id) ?? [];
 
-      const entries = account.dailySummaries.reduce(
+      const initialAvailable = applyAvailableImpact(
+        baseInitialAvailable,
+        previousSummaries,
+      );
+      const initialApplication = applyApplicationImpact(
+        baseInitialApplication,
+        previousSummaries,
+      );
+
+      const entries = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.entries),
         0,
       );
-      const outputs = account.dailySummaries.reduce(
+      const outputs = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.outputs),
         0,
       );
-      const fees = account.dailySummaries.reduce(
+      const fees = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.fees),
         0,
       );
-      const yields = account.dailySummaries.reduce(
+      const yields = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.yields),
         0,
       );
-      const monthlyYields = account.dailySummaries.reduce(
+      const monthlyYields = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.monthlyYields),
         0,
       );
-      const rescues = account.dailySummaries.reduce(
+      const rescues = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.rescues),
         0,
       );
-      const applications = account.dailySummaries.reduce(
+      const applications = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.applications),
         0,
       );
-      const transferEcIn = account.dailySummaries.reduce(
+      const transferEcIn = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.transferEcIn),
         0,
       );
-      const transferEcOut = account.dailySummaries.reduce(
+      const transferEcOut = currentPeriodSummaries.reduce(
         (sum, item) => sum + toNumber(item.transferEcOut),
         0,
       );

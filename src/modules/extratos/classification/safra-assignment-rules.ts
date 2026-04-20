@@ -30,4 +30,5 @@ export const safraAssignmentRules: SafraAssignmentRule[] = [
   { keyword: "TED", assignment: "ENTRADAS", signal: "C" },
   { keyword: "TED", assignment: "SAÍDAS", signal: "D" },
   { keyword: "TRANSF", assignment: "ENTRADAS", signal: "C" },
+  { keyword: "E-", assignment: "OUTROS", signal: "C" },
 ];

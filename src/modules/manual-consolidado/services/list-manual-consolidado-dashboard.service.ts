@@ -63,6 +63,32 @@ function createAccumulator(): ManualConsolidadoAccumulator {
   };
 }
 
+function calculateDashboardInitialBalance(
+  initialBalance: number,
+  summaries: Array<{
+    entries: unknown;
+    outputs: unknown;
+    fees: unknown;
+    yields: unknown;
+    rescues: unknown;
+    applications: unknown;
+    transferEcIn: unknown;
+    transferEcOut: unknown;
+  }>,
+) {
+  return roundCurrency(
+    initialBalance +
+      summaries.reduce((sum, item) => sum + toNumber(item.entries), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.yields), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.rescues), 0) +
+      summaries.reduce((sum, item) => sum + toNumber(item.transferEcIn), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.fees), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.outputs), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.applications), 0) -
+      summaries.reduce((sum, item) => sum + toNumber(item.transferEcOut), 0),
+  );
+}
+
 function applyEntryImpact(
   accumulator: ManualConsolidadoAccumulator,
   entry: Pick<ManualConsolidadoEntry, "assignment" | "transferDirection" | "amount">,
@@ -116,7 +142,7 @@ export async function listManualConsolidadoDashboard(
   const status = mapStatusFilterToPrisma(input.status);
 
   const accounts = await prisma.account.findMany({
-    where: accountIds.length ? { code: { in: accountIds } } : undefined,
+    where: accountIds.length ? { code: { in: accountIds } } : {},
     include: {
       company: true,
       openingBalance: true,
@@ -128,19 +154,23 @@ export async function listManualConsolidadoDashboard(
 
   const accountInternalIds = accounts.map((account) => account.id);
 
-  const [previousEntries, periodEntries] = await Promise.all([
+  const [previousDailySummaries, periodEntries] = await Promise.all([
     dateFromKey
-      ? prisma.manualConsolidadoEntry.findMany({
+      ? prisma.accountDailySummary.findMany({
           where: {
             accountId: { in: accountInternalIds },
             dateKey: { lt: dateFromKey },
-            ...(status ? { status } : {}),
           },
           select: {
             accountId: true,
-            assignment: true,
-            transferDirection: true,
-            amount: true,
+            entries: true,
+            outputs: true,
+            fees: true,
+            yields: true,
+            rescues: true,
+            applications: true,
+            transferEcIn: true,
+            transferEcOut: true,
           },
         })
       : Promise.resolve([]),
@@ -166,14 +196,17 @@ export async function listManualConsolidadoDashboard(
     }),
   ]);
 
-  const previousByAccount = new Map<string, ManualConsolidadoAccumulator>();
+  const previousDailySummariesByAccount = new Map<
+    string,
+    typeof previousDailySummaries
+  >();
   const periodByAccount = new Map<string, ManualConsolidadoAccumulator>();
 
-  for (const entry of previousEntries) {
-    const accumulator =
-      previousByAccount.get(entry.accountId) ?? createAccumulator();
-    applyEntryImpact(accumulator, entry);
-    previousByAccount.set(entry.accountId, accumulator);
+  for (const summary of previousDailySummaries) {
+    const summaries =
+      previousDailySummariesByAccount.get(summary.accountId) ?? [];
+    summaries.push(summary);
+    previousDailySummariesByAccount.set(summary.accountId, summaries);
   }
 
   for (const entry of periodEntries) {
@@ -184,12 +217,16 @@ export async function listManualConsolidadoDashboard(
   }
 
   const rows: ManualConsolidadoDashboardRow[] = accounts.map((account) => {
-    const previous = previousByAccount.get(account.id) ?? createAccumulator();
     const period = periodByAccount.get(account.id) ?? createAccumulator();
     const baseInitialBalance = roundCurrency(
       toNumber(account.openingBalance?.initialAvailable ?? 0),
     );
-    const initialBalance = calculateTotal(baseInitialBalance, previous);
+    const previousSummaries =
+      previousDailySummariesByAccount.get(account.id) ?? [];
+    const initialBalance = calculateDashboardInitialBalance(
+      baseInitialBalance,
+      previousSummaries,
+    );
 
     return {
       accountId: account.code,

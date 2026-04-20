@@ -43,9 +43,14 @@ export async function manualConsolidadoRoutes(app: FastifyInstance) {
 
       const result = await listManualConsolidadoDashboard({
         accountIds: toStringArray(query.accountId),
-        dateFrom: query.dateFrom,
-        dateTo: query.dateTo,
-        status: query.status as ManualConsolidadoStatusFilter | undefined,
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(query.status
+          ? {
+              status:
+                query.status as ManualConsolidadoStatusFilter,
+            }
+          : {}),
       });
 
       return reply.send({
@@ -97,14 +102,22 @@ export async function manualConsolidadoRoutes(app: FastifyInstance) {
         pageSize: Number(query.pageSize ?? 20),
         dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
         accountIds: toStringArray(query.accountId),
-        dateFrom: query.dateFrom,
-        dateTo: query.dateTo,
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
         ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
-        description: query.description,
-        assignment: query.assignment as
-          | ManualConsolidadoAssignmentLabel
-          | undefined,
-        status: query.status as ManualConsolidadoStatusFilter | undefined,
+        ...(query.description ? { description: query.description } : {}),
+        ...(query.assignment
+          ? {
+              assignment:
+                query.assignment as ManualConsolidadoAssignmentLabel,
+            }
+          : {}),
+        ...(query.status
+          ? {
+              status:
+                query.status as ManualConsolidadoStatusFilter,
+            }
+          : {}),
       });
 
       return reply.send({

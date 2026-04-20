@@ -162,7 +162,14 @@ function parseFormattedDateText(
     return null;
   }
 
-  const [, part1, part2, part3] = match;
+  const part1 = match[1];
+  const part2 = match[2];
+  const part3 = match[3];
+
+  if (!part1 || !part2 || !part3) {
+    return null;
+  }
+
   const normalizedFormat = String(formatCode ?? "").toLowerCase();
   const isMonthFirst = normalizedFormat.includes("m/d");
   const day = String(isMonthFirst ? part2 : part1).padStart(2, "0");
