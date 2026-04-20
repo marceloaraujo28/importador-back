@@ -78,16 +78,15 @@ export async function manualConsolidadoRoutes(app: FastifyInstance) {
         dateOrder?: "asc" | "desc";
         amount?: string;
         description?: string;
-        assignment?: string;
+        assignment?: string | string[];
         status?: string;
       };
 
-      if (
-        query.assignment &&
-        !isManualConsolidadoAssignment(query.assignment)
-      ) {
+      const assignments = toStringArray(query.assignment);
+
+      if (assignments.some((assignment) => !isManualConsolidadoAssignment(assignment))) {
         return reply.status(400).send({
-          error: `Classificacao invalida recebida: ${query.assignment}.`,
+          error: "Uma ou mais classificacoes recebidas sao invalidas.",
         });
       }
 
@@ -106,10 +105,10 @@ export async function manualConsolidadoRoutes(app: FastifyInstance) {
         ...(query.dateTo ? { dateTo: query.dateTo } : {}),
         ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
         ...(query.description ? { description: query.description } : {}),
-        ...(query.assignment
+        ...(assignments.length
           ? {
               assignment:
-                query.assignment as ManualConsolidadoAssignmentLabel,
+                assignments as ManualConsolidadoAssignmentLabel[],
             }
           : {}),
         ...(query.status

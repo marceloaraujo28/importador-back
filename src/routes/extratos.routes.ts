@@ -404,7 +404,8 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "OUTROS";
         dateFrom?: string;
         dateTo?: string;
-        dateOrder?: "asc" | "desc";
+        amountOrder?: "asc" | "desc";
+        description?: string;
         amount?: string;
         accountId?: string | string[];
         bankName?: string | string[];
@@ -424,14 +425,17 @@ export async function extratosRoutes(app: FastifyInstance) {
 
       const result = await listExtratos({
         page: Number(query.page ?? 1),
-        pageSize: Number(query.pageSize ?? 20),
+        pageSize: Number(query.pageSize ?? 50),
         ...(query.assignment ? { assignment: query.assignment } : {}),
         ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
+        ...(query.description ? { description: query.description } : {}),
         ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
         ...(query.dateTo ? { dateTo: query.dateTo } : {}),
         ...(accountIds.length ? { accountIds } : {}),
         ...(bankNames.length ? { bankNames } : {}),
-        dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
+        ...(query.amountOrder === "asc" || query.amountOrder === "desc"
+          ? { amountOrder: query.amountOrder }
+          : {}),
       });
 
       return reply.send({
