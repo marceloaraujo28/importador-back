@@ -20,7 +20,7 @@ type ListManualConsolidadoEntriesInput = {
   dateTo?: string;
   amount?: number;
   description?: string;
-  assignment?: ManualConsolidadoAssignmentLabel;
+  assignment?: ManualConsolidadoAssignmentLabel[];
   status?: ManualConsolidadoStatusFilter;
 };
 
@@ -35,19 +35,18 @@ function getDateKeyOrUndefined(date?: string) {
 export async function listManualConsolidadoEntries(
   input: ListManualConsolidadoEntriesInput,
 ) {
-  const page = Math.max(1, input.page);
+  const requestedPage = Math.max(1, input.page);
   const pageSize = Math.max(1, Math.min(100, input.pageSize));
-  const skip = (page - 1) * pageSize;
   const dateFromKey = getDateKeyOrUndefined(input.dateFrom);
   const dateToKey = getDateKeyOrUndefined(input.dateTo);
   const accountIds = input.accountIds?.filter(Boolean) ?? [];
-  const assignment = input.assignment
-    ? mapAssignmentToPrisma(input.assignment)
-    : undefined;
+  const assignments =
+    input.assignment?.map((assignment) => mapAssignmentToPrisma(assignment)) ??
+    [];
   const status = mapStatusFilterToPrisma(input.status);
 
   const where: Prisma.ManualConsolidadoEntryWhereInput = {
-    ...(assignment ? { assignment } : {}),
+    ...(assignments.length ? { assignment: { in: assignments } } : {}),
     ...(status ? { status } : {}),
     ...(input.amount !== undefined ? { amount: input.amount } : {}),
     ...(input.description
@@ -76,24 +75,33 @@ export async function listManualConsolidadoEntries(
       : {}),
   };
 
-  const [totalItems, entries] = await Promise.all([
+  const [totalItems, filteredAmountAggregate] = await Promise.all([
     prisma.manualConsolidadoEntry.count({ where }),
-    prisma.manualConsolidadoEntry.findMany({
+    prisma.manualConsolidadoEntry.aggregate({
       where,
-      skip,
-      take: pageSize,
-      orderBy: [{ dateKey: input.dateOrder }, { createdAt: "desc" }],
-      include: {
-        account: {
-          include: {
-            company: true,
-          },
-        },
+      _sum: {
+        amount: true,
       },
     }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const skip = (page - 1) * pageSize;
+
+  const entries = await prisma.manualConsolidadoEntry.findMany({
+    where,
+    skip,
+    take: pageSize,
+    orderBy: [{ dateKey: input.dateOrder }, { createdAt: "desc" }],
+    include: {
+      account: {
+        include: {
+          company: true,
+        },
+      },
+    },
+  });
 
   return {
     data: entries.map(mapManualConsolidadoEntryResponse),
@@ -102,6 +110,7 @@ export async function listManualConsolidadoEntries(
       pageSize,
       totalItems,
       totalPages,
+      filteredAmount: Number(filteredAmountAggregate._sum.amount ?? 0),
     },
   };
 }
