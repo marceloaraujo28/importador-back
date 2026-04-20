@@ -25,6 +25,26 @@ function extractAccountIdFromFileName(fileName: string): string | null {
   return match ? match[0] : null;
 }
 
+function hasExtratosExportFilters(input: {
+  assignment?: string | undefined;
+  dateFrom?: string | undefined;
+  dateTo?: string | undefined;
+  amount?: string | undefined;
+  description?: string | undefined;
+  accountIds?: string[] | undefined;
+  bankNames?: string[] | undefined;
+}) {
+  return Boolean(
+    input.assignment ||
+      input.dateFrom ||
+      input.dateTo ||
+      input.amount !== undefined ||
+      input.description ||
+      input.accountIds?.length ||
+      input.bankNames?.length,
+  );
+}
+
 export async function extratosRoutes(app: FastifyInstance) {
   app.post("/extratos/importar", async (request, reply) => {
     const files = request.files();
@@ -279,14 +299,53 @@ export async function extratosRoutes(app: FastifyInstance) {
           | "OUTROS";
         dateFrom?: string;
         dateTo?: string;
-        dateOrder?: "asc" | "desc";
+        amountOrder?: "asc" | "desc";
+        description?: string;
+        amount?: string;
+        accountId?: string | string[];
+        bankName?: string | string[];
       };
+
+      const accountIds = Array.isArray(query.accountId)
+        ? query.accountId
+        : query.accountId
+          ? [query.accountId]
+          : [];
+
+      const bankNames = Array.isArray(query.bankName)
+        ? query.bankName
+        : query.bankName
+          ? [query.bankName]
+          : [];
+
+      if (
+        !hasExtratosExportFilters({
+          assignment: query.assignment,
+          dateFrom: query.dateFrom,
+          dateTo: query.dateTo,
+          amount: query.amount,
+          description: query.description,
+          accountIds,
+          bankNames,
+        })
+      ) {
+        return reply.status(400).send({
+          error:
+            "Aplique ao menos um filtro antes de exportar os extratos.",
+        });
+      }
 
       const buffer = await exportExtratos({
         ...(query.assignment ? { assignment: query.assignment } : {}),
         ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
         ...(query.dateTo ? { dateTo: query.dateTo } : {}),
-        dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
+        ...(query.amountOrder === "asc" || query.amountOrder === "desc"
+          ? { amountOrder: query.amountOrder }
+          : {}),
+        ...(query.description ? { description: query.description } : {}),
+        ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
+        ...(accountIds.length ? { accountIds } : {}),
+        ...(bankNames.length ? { bankNames } : {}),
       });
 
       const fileName = "extratos.xlsx";

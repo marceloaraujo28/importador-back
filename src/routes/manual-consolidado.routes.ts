@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { createManualConsolidadoEntry } from "../modules/manual-consolidado/services/create-manual-consolidado-entry.service";
 import { deleteManualConsolidadoEntry } from "../modules/manual-consolidado/services/delete-manual-consolidado-entry.service";
+import { exportManualConsolidadoDashboard } from "../modules/manual-consolidado/services/export-manual-consolidado-dashboard.service";
+import { exportManualConsolidadoEntries } from "../modules/manual-consolidado/services/export-manual-consolidado-entries.service";
 import { getManualConsolidadoEntry } from "../modules/manual-consolidado/services/get-manual-consolidado-entry.service";
 import { listManualConsolidadoDashboard } from "../modules/manual-consolidado/services/list-manual-consolidado-dashboard.service";
 import { listManualConsolidadoEntries } from "../modules/manual-consolidado/services/list-manual-consolidado-entries.service";
@@ -25,7 +27,196 @@ function toStringArray(value?: string | string[]) {
     .filter(Boolean);
 }
 
+function hasManualConsolidadoSummaryExportFilters(input: {
+  accountIds?: string[] | undefined;
+  dateFrom?: string | undefined;
+  dateTo?: string | undefined;
+  status?: string | undefined;
+}) {
+  return Boolean(
+    input.accountIds?.length ||
+      input.dateFrom ||
+      input.dateTo ||
+      (input.status && input.status !== "TODOS"),
+  );
+}
+
+function hasManualConsolidadoEntriesExportFilters(input: {
+  accountIds?: string[] | undefined;
+  dateFrom?: string | undefined;
+  dateTo?: string | undefined;
+  amount?: string | undefined;
+  description?: string | undefined;
+  assignments?: string[] | undefined;
+  status?: string | undefined;
+}) {
+  return Boolean(
+    input.accountIds?.length ||
+      input.dateFrom ||
+      input.dateTo ||
+      input.amount !== undefined ||
+      input.description ||
+      input.assignments?.length ||
+      (input.status && input.status !== "TODOS"),
+  );
+}
+
 export async function manualConsolidadoRoutes(app: FastifyInstance) {
+  app.get("/consolidado-manual/exportar/resumo", async (request, reply) => {
+    try {
+      const query = request.query as {
+        accountId?: string | string[];
+        dateFrom?: string;
+        dateTo?: string;
+        status?: string;
+      };
+
+      const accountIds = toStringArray(query.accountId);
+
+      if (
+        !hasManualConsolidadoSummaryExportFilters({
+          accountIds,
+          dateFrom: query.dateFrom,
+          dateTo: query.dateTo,
+          status: query.status,
+        })
+      ) {
+        return reply.status(400).send({
+          error:
+            "Aplique ao menos um filtro antes de exportar o dashboard manual.",
+        });
+      }
+
+      if (query.status && !isManualConsolidadoStatusFilter(query.status)) {
+        return reply.status(400).send({
+          error: `Status invalido recebido: ${query.status}.`,
+        });
+      }
+
+      const buffer = await exportManualConsolidadoDashboard({
+        ...(accountIds.length ? { accountIds } : {}),
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(query.status
+          ? {
+              status:
+                query.status as ManualConsolidadoStatusFilter,
+            }
+          : {}),
+      });
+
+      reply
+        .header(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        .header(
+          "Content-Disposition",
+          'attachment; filename="consolidado-manual-dashboard.xlsx"',
+        );
+
+      return reply.send(buffer);
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao exportar dashboard manual.",
+      });
+    }
+  });
+
+  app.get("/consolidado-manual/exportar/lancamentos", async (request, reply) => {
+    try {
+      const query = request.query as {
+        accountId?: string | string[];
+        dateFrom?: string;
+        dateTo?: string;
+        dateOrder?: "asc" | "desc";
+        amount?: string;
+        description?: string;
+        assignment?: string | string[];
+        status?: string;
+      };
+
+      const accountIds = toStringArray(query.accountId);
+      const assignments = toStringArray(query.assignment);
+
+      if (
+        !hasManualConsolidadoEntriesExportFilters({
+          accountIds,
+          dateFrom: query.dateFrom,
+          dateTo: query.dateTo,
+          amount: query.amount,
+          description: query.description,
+          assignments,
+          status: query.status,
+        })
+      ) {
+        return reply.status(400).send({
+          error:
+            "Aplique ao menos um filtro antes de exportar os registros manuais.",
+        });
+      }
+
+      if (
+        assignments.some(
+          (assignment) => !isManualConsolidadoAssignment(assignment),
+        )
+      ) {
+        return reply.status(400).send({
+          error: "Uma ou mais classificacoes recebidas sao invalidas.",
+        });
+      }
+
+      if (query.status && !isManualConsolidadoStatusFilter(query.status)) {
+        return reply.status(400).send({
+          error: `Status invalido recebido: ${query.status}.`,
+        });
+      }
+
+      const buffer = await exportManualConsolidadoEntries({
+        dateOrder: query.dateOrder === "asc" ? "asc" : "desc",
+        ...(accountIds.length ? { accountIds } : {}),
+        ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
+        ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+        ...(query.amount !== undefined ? { amount: Number(query.amount) } : {}),
+        ...(query.description ? { description: query.description } : {}),
+        ...(assignments.length
+          ? {
+              assignment:
+                assignments as ManualConsolidadoAssignmentLabel[],
+            }
+          : {}),
+        ...(query.status
+          ? {
+              status:
+                query.status as ManualConsolidadoStatusFilter,
+            }
+          : {}),
+      });
+
+      reply
+        .header(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        .header(
+          "Content-Disposition",
+          'attachment; filename="consolidado-manual-registros.xlsx"',
+        );
+
+      return reply.send(buffer);
+    } catch (error) {
+      return reply.status(400).send({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao exportar registros manuais.",
+      });
+    }
+  });
+
   app.get("/consolidado-manual/resumo", async (request, reply) => {
     try {
       const query = request.query as {
