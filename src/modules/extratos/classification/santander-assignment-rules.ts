@@ -18,7 +18,7 @@ export const santanderAssignmentRules: SantanderAssignmentRule[] = [
   { keyword: "TED ENVIADA", assignment: "SAÍDAS", signal: "D" },
   { keyword: "TED", assignment: "ENTRADAS", signal: "C" },
   { keyword: "APLICACAO", assignment: "APLICAÇÕES", signal: "D" },
-  { keyword: "ESTORNO", assignment: "APLICAÇÕES", signal: "C" },
+  { keyword: "ESTORNO", assignment: "OUTROS", signal: "C" },
   { keyword: "PIX", assignment: "ENTRADAS", signal: "C" },
   { keyword: "RESGATE", assignment: "RESGATES", signal: "C" },
   { keyword: "TARIFA", assignment: "TARIFAS", signal: "D" },
