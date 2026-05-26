@@ -19,7 +19,8 @@ type ListExtratosInput = {
     | "OUTROS";
   dateFrom?: string;
   dateTo?: string;
-  dateOrder: "asc" | "desc";
+  amountOrder?: "asc" | "desc";
+  description?: string;
   amount?: number;
   accountIds?: string[];
   bankNames?: string[];
@@ -100,6 +101,13 @@ export async function listExtratos(input: ListExtratosInput) {
   const where: Prisma.TransactionWhereInput = {
     ...(mappedAssignment ? { assignment: mappedAssignment } : {}),
     ...(input.amount !== undefined ? { amount: input.amount } : {}),
+    ...(input.description
+      ? {
+          description: {
+            contains: input.description,
+          },
+        }
+      : {}),
     ...(input.dateFrom || input.dateTo
       ? {
           dateKey: {
@@ -128,7 +136,9 @@ export async function listExtratos(input: ListExtratosInput) {
       where,
       skip,
       take: pageSize,
-      orderBy: [{ dateKey: input.dateOrder }, { createdAt: "desc" }],
+      orderBy: input.amountOrder
+        ? [{ amount: input.amountOrder }, { createdAt: "desc" }]
+        : [{ dateKey: "desc" }, { createdAt: "desc" }],
       include: {
         account: {
           include: {

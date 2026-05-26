@@ -1,3 +1,4 @@
+import XLSX from "xlsx";
 import { Prisma } from "../../../generated/prisma/client";
 import { prisma } from "../../../lib/prisma";
 import type {
@@ -11,9 +12,7 @@ import {
 import { normalizeManualConsolidadoDate } from "../utils/manual-consolidado-date";
 import { mapManualConsolidadoEntryResponse } from "../utils/manual-consolidado-response";
 
-type ListManualConsolidadoEntriesInput = {
-  page: number;
-  pageSize: number;
+type ExportManualConsolidadoEntriesInput = {
   dateOrder: "asc" | "desc";
   accountIds?: string[];
   dateFrom?: string;
@@ -24,6 +23,16 @@ type ListManualConsolidadoEntriesInput = {
   status?: ManualConsolidadoStatusFilter;
 };
 
+type ExportRow = {
+  ID: string;
+  Empresa: string;
+  Data: string;
+  Montante: number;
+  Histórico: string;
+  Atribuição: string;
+  Status: string;
+};
+
 function getDateKeyOrUndefined(date?: string) {
   if (!date) {
     return undefined;
@@ -32,11 +41,9 @@ function getDateKeyOrUndefined(date?: string) {
   return normalizeManualConsolidadoDate(date).dateKey;
 }
 
-export async function listManualConsolidadoEntries(
-  input: ListManualConsolidadoEntriesInput,
+export async function exportManualConsolidadoEntries(
+  input: ExportManualConsolidadoEntriesInput,
 ) {
-  const requestedPage = Math.max(1, input.page);
-  const pageSize = Math.max(1, Math.min(100, input.pageSize));
   const dateFromKey = getDateKeyOrUndefined(input.dateFrom);
   const dateToKey = getDateKeyOrUndefined(input.dateTo);
   const accountIds = input.accountIds?.filter(Boolean) ?? [];
@@ -75,24 +82,8 @@ export async function listManualConsolidadoEntries(
       : {}),
   };
 
-  const [totalItems, filteredAmountAggregate] = await Promise.all([
-    prisma.manualConsolidadoEntry.count({ where }),
-    prisma.manualConsolidadoEntry.aggregate({
-      where,
-      _sum: {
-        amount: true,
-      },
-    }),
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const page = Math.min(requestedPage, totalPages);
-  const skip = (page - 1) * pageSize;
-
   const entries = await prisma.manualConsolidadoEntry.findMany({
     where,
-    skip,
-    take: pageSize,
     orderBy: [{ dateKey: input.dateOrder }, { createdAt: "desc" }],
     include: {
       account: {
@@ -103,14 +94,38 @@ export async function listManualConsolidadoEntries(
     },
   });
 
-  return {
-    data: entries.map(mapManualConsolidadoEntryResponse),
-    meta: {
-      page,
-      pageSize,
-      totalItems,
-      totalPages,
-      filteredAmount: Number(filteredAmountAggregate._sum.amount ?? 0),
-    },
-  };
+  const mappedEntries = entries.map(mapManualConsolidadoEntryResponse);
+
+  const rows: ExportRow[] = mappedEntries.map((entry) => ({
+    ID: entry.accountId,
+    Empresa: entry.companyName,
+    Data: entry.date,
+    Montante: entry.amount,
+    Histórico: entry.description,
+    Atribuição:
+      entry.assignment === "TRANSFERENCIA_EC"
+        ? `${entry.assignment} (${entry.transferDirection === "ENTRADA" ? "C" : "D"})`
+        : entry.assignment,
+    Status: entry.status,
+  }));
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+
+  worksheet["!cols"] = [
+    { wch: 10 },
+    { wch: 28 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 40 },
+    { wch: 24 },
+    { wch: 18 },
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Registros Manuais");
+
+  return XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "buffer",
+  });
 }

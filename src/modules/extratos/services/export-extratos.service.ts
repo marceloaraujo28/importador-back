@@ -16,7 +16,11 @@ type ExportExtratosInput = {
     | "OUTROS";
   dateFrom?: string;
   dateTo?: string;
-  dateOrder: "asc" | "desc";
+  amountOrder?: "asc" | "desc";
+  description?: string;
+  amount?: number;
+  accountIds?: string[];
+  bankNames?: string[];
 };
 
 type ExportRow = {
@@ -121,6 +125,14 @@ export async function exportExtratos(input: ExportExtratosInput) {
 
   const where = {
     ...(mappedAssignment ? { assignment: mappedAssignment } : {}),
+    ...(input.amount !== undefined ? { amount: input.amount } : {}),
+    ...(input.description
+      ? {
+          description: {
+            contains: input.description,
+          },
+        }
+      : {}),
     ...(input.dateFrom || input.dateTo
       ? {
           dateKey: {
@@ -129,11 +141,25 @@ export async function exportExtratos(input: ExportExtratosInput) {
           },
         }
       : {}),
+    ...(input.accountIds?.length || input.bankNames?.length
+      ? {
+          account: {
+            ...(input.accountIds?.length
+              ? { code: { in: input.accountIds } }
+              : {}),
+            ...(input.bankNames?.length
+              ? { bankName: { in: input.bankNames } }
+              : {}),
+          },
+        }
+      : {}),
   };
 
   const transactions = await prisma.transaction.findMany({
     where,
-    orderBy: [{ dateKey: input.dateOrder }, { createdAt: "desc" }],
+    orderBy: input.amountOrder
+      ? [{ amount: input.amountOrder }, { createdAt: "desc" }]
+      : [{ dateKey: "desc" }, { createdAt: "desc" }],
     include: {
       account: {
         include: {
